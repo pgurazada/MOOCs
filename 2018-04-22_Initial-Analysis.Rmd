@@ -111,34 +111,49 @@ glimpse(cb22x_df)
 ```{r}
 cb22x_df %>% 
   select(-userid_DI, -grade, -registered, -certified, -explored) %>% 
-  mutate(active_for = last_event_DI - start_time_DI) %>% 
+  mutate(active_for = as.numeric(last_event_DI - start_time_DI, units = "days")) %>% 
   select(viewed, active_for, everything(), -last_event_DI, -start_time_DI) ->
   cb22x_view_df
 ```
 
 The outcome variable is whether a registered student has logged in just once. We are here not focused on the viewers, it is more of a concern to check what prompts the drop-off. Logging in just once is bad, but less equally than not even bothering to check in. Is there a pattern within the students who registered and just logged-in once. What put them off? The number of smart cookies who log in once before the assessment and finish the course is tiny.
 
-Lets see if we can fix the missing values. We use the K-nearest neighbors algorithm to fill them in.
+Once again, we need to see how bad the missing value problem is now. 
+
 ```{r}
-impute_na <- preProcess(cb22x_view_df, 
-                        method = "knnImpute",
-                        trControl = trainControl(method = "repectedcv",
-                                                 number = 10, 
-                                                 repeats = 5),
-                        tuneGrid = data.frame(k = 2:10)) 
-
-cb22x_clean_df <- predict(impute_na, cb22x_view_df)
-
+cb22x_view_df %>% 
+  gather(Variable, Value) %>% 
+  group_by(Variable) %>% 
+  summarize(n_missing = sum(is.na(Value)))
 
 ```
 
-
+The missing values seem to be concentrated in variables that will be very hard to impute (e.g., gender, LoE). Let us begin conservative by omitting rows with missing data
 
 ```{r}
-tr_rows <- createDataPartition(cb22x_view_df$viewed, p = 0.8, list = FALSE)
+cb22x_view_df %>% 
+  drop_na() %>% 
+  filter(active_for > 0) ->
+  cb22x_clean_df
 
+sum(is.na(cb22x_clean_df))
+glimpse(cb22x_clean_df)
+```
 
+With a large number of predictors (especially when the year of birth gets transformed), logistic regression runs into the perfect separation problem.
 
+```{r}
+tr_rows <- createDataPartition(cb22x_clean_df$viewed, p = 0.8, list = FALSE)
+
+cb22x_clean_train <- cb22x_clean_df[tr_rows, ]
+cb22x_clean_test <- cb22x_clean_df[-tr_rows, ]
+
+cb22x_logit <- train(factor(viewed) ~ .,
+                     data = cb22x_clean_train,
+                     method = "rf",
+                     trControl = trainControl(method = "repeatedcv",
+                                              number = 10,
+                                              repeats = 5))
 
 ```
 
