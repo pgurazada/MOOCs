@@ -1,0 +1,147 @@
+---
+title: "Analysis of MOOC data from Harvard/MIT EdX for the period 2012-2013"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(ggthemes)
+library(caret)
+
+set.seed(20130810)
+
+theme_set(theme_few() + theme(plot.title = element_text(face="bold")))
+```
+
+
+Several pieces of interesting research on MOOCs have been shared on the web page: https://vpal.harvard.edu/publications?page=1
+
+
+```{r echo=FALSE}
+mooc_df <- read_csv("data/HMXPC13_DI_v2_5-14-14.csv", progress = TRUE)
+```
+
+```{r}
+colnames(mooc_df)
+```
+
+To begin with, lets look at the number of students enrolled for each course, and a summary of their activity. There are4 types of students. registered, i.e., all students in the data. 'viewed', i.e., logged in just one time. 'explored', i.e., viewed half or more chapters. 'certified', i.e., achieved passing grade. 
+```{r}
+mooc_df %>% 
+  filter(is.na(incomplete_flag)) %>% 
+  group_by(course_id) %>% 
+  summarize_at(vars(registered, viewed, explored, certified),
+               function(col) {return(mean(col, na.rm = TRUE))})
+```
+
+```{r}
+mooc_df %>% 
+  filter(is.na(incomplete_flag)) %>% 
+  group_by(course_id) %>% 
+  summarize_at(vars(nevents, ndays_act, nplay_video, nchapters, nforum_posts),
+               function(col) {return(mean(col, na.rm = TRUE))})
+```
+
+
+
+Lets look at the number of unique users across the different courses. 
+```{r}
+mooc_df %>% 
+  filter(is.na(incomplete_flag)) %>% 
+  group_by(course_id) %>% 
+  summarize(n = n())
+
+length(unique(mooc_df$userid_DI))
+```
+
+Given the diversity in the course content, it would be ideal if we do not pool the data into one.
+
+A good dependent variable is the number of days a student is active.
+
+Let us run a typical analysis for the HarvardX, CB22x course:
+
+```{r}
+mooc_df %>% 
+  filter(course_id == "HarvardX/CB22x/2013_Spring", is.na(incomplete_flag)) %>% 
+  select(userid_DI, grade, ndays_act, registered, explored, certified, viewed, 
+         start_time_DI, last_event_DI, nevents, nchapters, nforum_posts, LoE_DI, gender, YoB) ->
+  cb22x_df
+
+glimpse(cb22x_df)
+```
+
+Several NA's pop up all over the place, lets whittle these down to see which variables have the most missing values (the warning below indicates the differences across factor levels, which is not a primary concern at the moment).
+
+```{r}
+cb22x_df %>%
+  gather(Variable, Value) %>% 
+  group_by(Variable) %>% 
+  summarize(n_missing = sum(is.na(Value)))
+
+```
+
+As expected, the missing values are heavily skewed in some variables. Significant preprocessing is required on these missing values that touches almost 50% of the data (e.g., nchapters). If that makes us uncomfortable, we can look at taking out any of the data that contains missing values on these variables.
+
+We can look at the distribution of the typical outcome variables we might wish to choose:
+
+```{r}
+cb22x_df %>% 
+  select(explored, viewed, certified) %>% 
+  gather(Variable, Value) %>% 
+  ggplot() +
+    geom_histogram(aes(x = Value), stat = "count") +
+    scale_x_continuous(breaks = c(0.0, 1.0), labels = c("0", "1")) +
+    facet_wrap(~Variable, ncol = 2) +
+    labs(x = "",
+         y = "Count",
+         title = "Distribution of possible outcome variables")
+```
+
+There is severe class imbalance in `certfied` or `explored`. What is interesting here is that between registering for the course and to actually viewwing the course itself there is a steep dropout rate. Dropouts occur before the course begins and after the course begins (Note that there are some clever chaps who log in just one time and run through the course). These are a minority though and one should think of ways to correct such behavior.
+
+Let us begin with the `viewed` as the outcome. The question we wish to answer is: What features drive the students who register to start the course. As a first pass, let us fit a logistic regression.
+
+Let us now munge the data a bit to extract features.
+
+```{r}
+glimpse(cb22x_df)
+```
+
+
+```{r}
+cb22x_df %>% 
+  select(-userid_DI, -grade, -registered, -certified, -explored) %>% 
+  mutate(active_for = last_event_DI - start_time_DI) %>% 
+  select(viewed, active_for, everything(), -last_event_DI, -start_time_DI) ->
+  cb22x_view_df
+```
+
+The outcome variable is whether a registered student has logged in just once. We are here not focused on the viewers, it is more of a concern to check what prompts the drop-off. Logging in just once is bad, but less equally than not even bothering to check in. Is there a pattern within the students who registered and just logged-in once. What put them off? The number of smart cookies who log in once before the assessment and finish the course is tiny.
+
+Lets see if we can fix the missing values. We use the K-nearest neighbors algorithm to fill them in.
+```{r}
+impute_na <- preProcess(cb22x_view_df, 
+                        method = "knnImpute",
+                        trControl = trainControl(method = "repectedcv",
+                                                 number = 10, 
+                                                 repeats = 5),
+                        tuneGrid = data.frame(k = 2:10)) 
+
+cb22x_clean_df <- predict(impute_na, cb22x_view_df)
+
+
+```
+
+
+
+```{r}
+tr_rows <- createDataPartition(cb22x_view_df$viewed, p = 0.8, list = FALSE)
+
+
+
+
+```
+
+
+
+
