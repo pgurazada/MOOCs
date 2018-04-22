@@ -133,7 +133,11 @@ The missing values seem to be concentrated in variables that will be very hard t
 ```{r}
 cb22x_view_df %>% 
   drop_na() %>% 
-  filter(active_for > 0) ->
+  filter(active_for > 0) %>% 
+  mutate(viewed = factor(viewed),
+         LoE_DI = factor(LoE_DI),
+         gender = factor(gender),
+         YoB = factor(YoB)) ->
   cb22x_clean_df
 
 sum(is.na(cb22x_clean_df))
@@ -148,15 +152,20 @@ tr_rows <- createDataPartition(cb22x_clean_df$viewed, p = 0.8, list = FALSE)
 cb22x_clean_train <- cb22x_clean_df[tr_rows, ]
 cb22x_clean_test <- cb22x_clean_df[-tr_rows, ]
 
-cb22x_logit <- train(factor(viewed) ~ .,
-                     data = cb22x_clean_train,
-                     method = "rf",
-                     trControl = trainControl(method = "repeatedcv",
-                                              number = 10,
-                                              repeats = 5))
+cb22x_rf <- train(viewed ~ .,
+                  data = cb22x_clean_train,
+                  method = "ranger",
+                  tuneGrid = expand.grid(.mtry = 2:4, .splitrule = "gini", .min.node.size = c(10, 20)),
+                  trControl = trainControl(method = "repeatedcv",
+                                           number = 10,
+                                           repeats = 5),
+                  importance = "permutation")
 
 ```
 
 
+```{r}
+varImp(cb22x_rf)
+```
 
 
