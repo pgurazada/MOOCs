@@ -3,7 +3,8 @@ title: "Analysis of MOOC data from Harvard/MIT EdX for the period 2012-2013"
 output: html_notebook
 ---
 
-```{r}
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
 library(ggthemes)
 library(caret)
@@ -12,7 +13,6 @@ set.seed(20130810)
 
 theme_set(theme_few() + theme(plot.title = element_text(face="bold")))
 ```
-
 
 Several pieces of interesting research on MOOCs have been shared on the web page: https://vpal.harvard.edu/publications?page=1
 
@@ -25,13 +25,41 @@ mooc_df <- read_csv("data/HMXPC13_DI_v2_5-14-14.csv", progress = TRUE)
 colnames(mooc_df)
 ```
 
-To begin with, lets look at the number of students enrolled for each course, and a summary of their activity. There are4 types of students. registered, i.e., all students in the data. 'viewed', i.e., logged in just one time. 'explored', i.e., viewed half or more chapters. 'certified', i.e., achieved passing grade. 
+To begin with, lets look at the number of students enrolled for each course, and a summary of their activity. There are 4 types of students. registered, i.e., all students in the data. 'viewed', i.e., logged in just one time. 'explored', i.e., viewed half or more chapters. 'certified', i.e., achieved passing grade. 
+
+Let us first look at how many registered for each course.
 ```{r}
 mooc_df %>% 
   filter(is.na(incomplete_flag)) %>% 
   group_by(course_id) %>% 
-  summarize_at(vars(registered, viewed, explored, certified),
-               function(col) {return(mean(col, na.rm = TRUE))})
+  summarize(n_registered = length(registered)) %>% 
+  ggplot() +
+    geom_bar(aes(x = course_id, y = n_registered), stat = "identity") +
+    #geom_text(aes(x = course_id, y = n_registered + 10000, label = n_registered)) +
+    labs(x = "Course",
+         y = "Number registered",
+         title = "Distribution of registered students across all courses") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  
+```
+
+
+```{r}
+mooc_df %>% 
+  filter(is.na(incomplete_flag)) %>% 
+  group_by(course_id) %>% 
+  summarize_at(vars(viewed, explored, certified),
+               function(col) {return(mean(col, na.rm = TRUE))}) %>% 
+  ggplot() +
+    geom_bar(aes(x = course_id, y = viewed, fill = "viewed"), stat = "identity") +
+    geom_bar(aes(x = course_id, y = explored, fill = "explored"), stat = "identity") +
+    geom_bar(aes(x = course_id, y = certified, fill = "certified"), stat = "identity") +
+    scale_fill_grey() +
+    labs(x = "Course",
+         y = "Fraction",
+         title = "Student activity across courses",
+         fill = "Activity") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 ```{r}
@@ -42,23 +70,9 @@ mooc_df %>%
                function(col) {return(mean(col, na.rm = TRUE))})
 ```
 
-
-
-Lets look at the number of unique users across the different courses. 
-```{r}
-mooc_df %>% 
-  filter(is.na(incomplete_flag)) %>% 
-  group_by(course_id) %>% 
-  summarize(n = n())
-
-length(unique(mooc_df$userid_DI))
-```
-
 Given the diversity in the course content, it would be ideal if we do not pool the data into one.
 
-A good dependent variable is the number of days a student is active.
-
-Let us run a typical analysis for the HarvardX, CB22x course:
+In the rest of the documents, we analyze participant activity in all the 16 courses using a common framework.
 
 ```{r}
 mooc_df %>% 
@@ -165,7 +179,7 @@ cb22x_rf <- train(viewed ~ .,
 
 
 ```{r}
-varImp(cb22x_rf)
+varImp(cb22x_logit)
 ```
 
 

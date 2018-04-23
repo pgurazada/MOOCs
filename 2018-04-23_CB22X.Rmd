@@ -1,0 +1,159 @@
+---
+title: "Analysing Harvard CB22X"
+author: "Pavan Gurazada"
+date: "April 23, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(ggthemes)
+library(gridExtra)
+library(caret)
+
+set.seed(20130810)
+
+theme_set(theme_few() + theme(plot.title = element_text(face="bold")))
+```
+
+## 1. Introduction ##
+
+In this document, we analyze participant activity in the MOOC - "The Ancient Greek Hero" (Harvard CB22X). This course is a survey of the classical concept of heros in ancient Greek literature. Taught by Prof. Greg Nagy, this was one of the first courses that was launched as a MOOC. This course was particularly aimed at participants with no background in Greek literature. Mere exploration was actively encouraged (participants were told 'enjoying the content and the discussions is as legitimate and honorable' as the 'certficate' option). A central theme in the course was to acknowledge wide difference in the values of Greeks compared to those prevalent in the present day. Participants had to immerse themselves among the Greeks in 24 hours of instruction supplemented by freely available reading material. Each hour also included two sets of quizzes of multiple-choice type. The registration and tracking log data analysed in this document were collected between 2013-03-12 to 2013-09-08.
+
+```{r}
+mooc_df <- read_csv("data/HMXPC13_DI_v2_5-14-14.csv", progress = TRUE)
+glimpse(mooc_df)
+```
+
+## 2. Those who never showed up... ##
+
+We first look at the first leakage point - the set of participants who registered but never showed up for even a single class.
+
+
+```{r}
+mooc_df %>% 
+  filter(course_id == "HarvardX/CB22x/2013_Spring", is.na(incomplete_flag)) %>% 
+  select(userid_DI, grade, ndays_act, registered, explored, certified, viewed, 
+         start_time_DI, last_event_DI, nevents, nchapters, nforum_posts, LoE_DI, gender, YoB) ->
+  cb22x_df
+
+glimpse(cb22x_df)
+```
+
+Several NA's pop up all over the place, lets whittle these down to see which variables have the most missing values.
+
+```{r}
+cb22x_df %>%
+  gather(Variable, Value) %>% 
+  group_by(Variable) %>% 
+  summarize(prop_missing = sum(is.na(Value))/length(Value))
+```
+
+As expected, the missing values are heavily skewed in some variables. Significant preprocessing is required on these missing values that touches almost 50% of the data (e.g., nchapters).
+
+Now let us look at the distribution of the outcome variable we are interested - viewed + explored + certified. This is the subset of all registered participants who viewed at least one video. Let us call this set the `engaged` set (Here we encode `engaged = 0` if a participant registered but did not view a single video). 
+
+```{r}
+cb22x_df %>% 
+  select(registered, viewed, explored, certified) %>% 
+  mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0)) %>% 
+  ggplot() +
+  geom_bar(aes(x = engaged, y = ..prop..)) +
+  scale_x_continuous(breaks = c(0.0, 1.0), labels = c("0", "1")) +
+  scale_fill_grey() +
+  labs(x = "Engaged?",
+       y = "Proportion",
+       title = "Figure 1: Distribution of registered participants",
+       caption = "Note: a registered participant engaged if they watched at least one video")
+```
+
+Figure 1 highlights the first question we wish to explore - a large chunk of the registered participants drop out even before watching a single video. We wish to explore:
+  1. Are any systemic variations in the engaged vs the not enagaged?
+  2. What features of the registered participants are most predictive of drop out at this stage? Are these features captured in the data?
+  
+One way to explore the systemic variation is to see if there are any differences in engagement based on the participant profile (e.g., demographics).
+
+```{r}
+cb22x_df %>% 
+  select(registered, viewed, explored, certified, gender, LoE_DI, YoB) %>% 
+  mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0)) %>%
+  drop_na() %>% 
+  ggplot() +
+  geom_bar(aes(x = engaged, fill = gender)) +
+  scale_x_continuous(breaks = c(0.0, 1.0), labels = c("0", "1")) +
+  scale_fill_grey("Gender", labels = c("Female", "Male")) +
+  labs(x = "Engaged?",
+       y = "Count",
+       title = "Figure 2: Distribution of registered participants by gender") -> p1
+
+cb22x_df %>% 
+  select(registered, viewed, explored, certified, gender, LoE_DI, YoB) %>% 
+  mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0),
+         LoE_DI = factor(LoE_DI, levels = c("Less than Secondary", "Secondary", "Bachelor's", "Master's", "Doctorate"))) %>%
+  drop_na() %>% 
+  ggplot() +
+  geom_bar(aes(x = engaged, fill = LoE_DI)) +
+  scale_x_continuous(breaks = c(0.0, 1.0), labels = c("0", "1")) +
+  scale_fill_grey("Education") +
+  labs(x = "Engaged?",
+       y = "Count",
+       title = "Figure 3: Distribution of registered participants by level of education") -> p2
+
+grid.arrange(p1, p2, nrow = 2)
+```
+
+Note that we have taken out the missing values in Figure 2 and 3. The good thing we observe here is that there is no severe class imbalance to contend with.
+
+Let us run a random forest model to see if the collected features, i.e., gender, age, education level and country are predictive of the drop out rate at the outset. We suspect that these features will be weakly predictive.  
+
+```{r}
+mooc_df %>% 
+  filter(course_id == "HarvardX/CB22x/2013_Spring", is.na(incomplete_flag)) %>%
+  select(registered, viewed, explored, certified, gender, LoE_DI, YoB, final_cc_cname_DI) %>% 
+  mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0),
+         age = 2013 - as.numeric(YoB),
+         gender = factor(gender),
+         country = factor((final_cc_cname_DI)),
+         education = factor(make.names(LoE_DI))) %>% 
+  select(engaged, everything(), -registered, -viewed, -explored, -certified, -final_cc_cname_DI, -LoE_DI, -YoB) %>% 
+  drop_na() ->
+  cb22x_neng_df
+  
+glimpse(cb22x_neng_df)  
+
+```
+
+```{r}
+tr_rows <- createDataPartition(cb22x_neng_df$engaged, p = 0.8, list = FALSE)
+
+cb22x_train <- cb22x_neng_df[tr_rows, ]
+
+X_test <- cb22x_neng_df %>% slice(-tr_rows) %>% select(-engaged) 
+y_test <- cb22x_neng_df %>% slice(-tr_rows) %>% select(engaged) %>% mutate(engaged = factor(engaged)) %>% as_vector()
+
+cb22x_neng_logit <- train(factor(engaged) ~ .,
+                          data = cb22x_neng_df,
+                          method = "glm",
+                          trControl = trainControl(method = "repeatedcv",
+                                                   number = 10,
+                                                   repeats = 5),
+                          family = binomial(link = "logit"))
+
+cb22x_neng_logit$results
+cb22x_neng_rf <- train(X_train, y_train,
+                       method = "ranger",
+                       tuneGrid = expand.grid(.mtry = 2:4, .splitrule = "gini", .min.node.size = c(10, 20, 30)),
+                       trControl = trainControl(method = "repeatedcv",
+                                               number = 10,
+                                               repeats = 5),
+                       importance = "permutation")
+
+cb22x_neng_rf$results
+```
+
+
+## On those who engaged... ##
+Since the quizzes were embedded within the chapters, participants who earned a certificate had to complete at least 50% of the chapters. As noted in the introduction document, the researchers also divided the participants into three categories - viewers, explorers and certified. At one end of the spectrum were the viewers (i.e., participants who saw up to about 50% of the videos). Particularly interesting are the viewers who were eventually certified (called 'optimizers'), i.e., smart people who viewed precisely the required amount of content for them to earn a certificate (by acing almost every quiz they encountered along the way). Let us probe deeper into  
+
+
