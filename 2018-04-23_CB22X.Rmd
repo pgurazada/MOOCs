@@ -15,6 +15,11 @@ library(caret)
 set.seed(20130810)
 
 theme_set(theme_few() + theme(plot.title = element_text(face="bold")))
+
+library(parallel)
+library(doParallel)
+cluster <- makeCluster(detectCores() - 1) # convention to leave 1 core for OS
+registerDoParallel(cluster)
 ```
 
 ## 1. Introduction ##
@@ -114,43 +119,62 @@ mooc_df %>%
   mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0),
          age = 2013 - as.numeric(YoB),
          gender = factor(gender),
-         country = factor((final_cc_cname_DI)),
-         education = factor(make.names(LoE_DI))) %>% 
+         country = case_when(final_cc_cname_DI == "United States" ~ "US",
+                             final_cc_cname_DI == "India" ~ "IN",
+                             final_cc_cname_DI == "Greece" ~ "GR",
+                             final_cc_cname_DI == "United Kingdom" ~ "UK",
+                             final_cc_cname_DI == "Brazil" ~ "BR",
+                             final_cc_cname_DI == "Canada" ~ "CA",
+                             final_cc_cname_DI == "Spain" ~ "SP",
+                             final_cc_cname_DI == "China" ~ "CN",
+                             final_cc_cname_DI == "Australia" ~ "AU",
+                             final_cc_cname_DI == "France" ~ "FR",
+                             TRUE ~ "OT"),
+         education = case_when(LoE_DI == "Less than Secondary" ~ "LS",
+                               LoE_DI == "Secondary" ~ "SE",
+                               LoE_DI == "Bachelor's" ~ "BA",
+                               LoE_DI == "Master's" ~ "MA",
+                               LoE_DI == "Doctorate" ~ "DO")) %>% 
+  mutate(country = factor(country),
+         education = factor(education)) %>% 
   select(engaged, everything(), -registered, -viewed, -explored, -certified, -final_cc_cname_DI, -LoE_DI, -YoB) %>% 
   drop_na() ->
   cb22x_neng_df
   
 glimpse(cb22x_neng_df)  
-
 ```
 
 ```{r}
 tr_rows <- createDataPartition(cb22x_neng_df$engaged, p = 0.8, list = FALSE)
 
 cb22x_train <- cb22x_neng_df[tr_rows, ]
-
-X_test <- cb22x_neng_df %>% slice(-tr_rows) %>% select(-engaged) 
-y_test <- cb22x_neng_df %>% slice(-tr_rows) %>% select(engaged) %>% mutate(engaged = factor(engaged)) %>% as_vector()
+cb22x_test <- cb22x_neng_df[-tr_rows, ]
 
 cb22x_neng_logit <- train(factor(engaged) ~ .,
                           data = cb22x_neng_df,
                           method = "glm",
                           trControl = trainControl(method = "repeatedcv",
                                                    number = 10,
-                                                   repeats = 5),
+                                                   repeats = 5,
+                                                   allowParallel = TRUE),
                           family = binomial(link = "logit"))
 
+summary(cb22x_neng_logit)
 cb22x_neng_logit$results
-cb22x_neng_rf <- train(X_train, y_train,
-                       method = "ranger",
-                       tuneGrid = expand.grid(.mtry = 2:4, .splitrule = "gini", .min.node.size = c(10, 20, 30)),
+
+cb22x_neng_rf <- train(factor(engaged) ~ .,
+                       data = cb22x_neng_df,
+                       method = "rf",
+                       tuneGrid = expand.grid(mtry = 1:4),
                        trControl = trainControl(method = "repeatedcv",
-                                               number = 10,
-                                               repeats = 5),
-                       importance = "permutation")
+                                                number = 10,
+                                                repeats = 5,
+                                                allowParallel = TRUE))
 
 cb22x_neng_rf$results
 ```
+
+Logit or random forest get us to about 60% accuracy on cross-validation. This is not a great improvement over random guessing or going with the dominant class.
 
 
 ## On those who engaged... ##
