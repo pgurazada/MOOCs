@@ -24,14 +24,13 @@ registerDoParallel(cluster)
 
 ## 1. Introduction ##
 
-In this document, we analyze participant activity in the MOOC - "The Ancient Greek Hero" (Harvard CB22X). This course is a survey of the classical concept of heros in ancient Greek literature. Taught by Prof. Greg Nagy, this was one of the first courses that was launched as a MOOC. This course was particularly aimed at participants with no background in Greek literature. Mere exploration was actively encouraged (participants were told 'enjoying the content and the discussions is as legitimate and honorable' as the 'certficate' option). A central theme in the course was to acknowledge wide difference in the values of Greeks compared to those prevalent in the present day. Participants had to immerse themselves among the Greeks in 24 hours of instruction supplemented by freely available reading material. Each hour also included two sets of quizzes of multiple-choice type. The registration and tracking log data analysed in this document were collected between 2013-03-12 to 2013-09-08.
+In this document, we analyze participant activity in the MOOC - "The Ancient Greek Hero" (Harvard CB22X). This course is a survey of the classical concept of heros in ancient Greek literature. Taught by Prof. Greg Nagy, this was one of the first courses that was launched as a MOOC. This course was aimed at a broad cross-section of participants (even those with no background in Greek literature). Mere exploration was actively encouraged (participants were told 'enjoying the content and the discussions is as legitimate and honorable' as the 'certficate' option). A central theme in the course was to acknowledge wide difference in the values of Greeks compared to those prevalent in the present day. Participants had to immerse themselves among the ancient Greeks in 24 hours of instruction supplemented by freely available reading material. Each hour also included two sets of quizzes of multiple-choice type. The registration and tracking log data analysed in this document were collected between 2013-03-12 to 2013-09-08.
 
 ```{r}
 mooc_df <- read_csv("data/HMXPC13_DI_v2_5-14-14.csv", progress = TRUE)
-glimpse(mooc_df)
 ```
 
-## 2. Those who never showed up... ##
+## 2. On those who never showed up... ##
 
 We first look at the first leakage point - the set of participants who registered but never showed up for even a single class.
 
@@ -52,12 +51,12 @@ Several NA's pop up all over the place, lets whittle these down to see which var
 cb22x_df %>%
   gather(Variable, Value) %>% 
   group_by(Variable) %>% 
-  summarize(prop_missing = sum(is.na(Value))/length(Value))
+  summarize(missing_perc = floor(sum(is.na(Value)) * 100/length(Value)))
 ```
 
-As expected, the missing values are heavily skewed in some variables. Significant preprocessing is required on these missing values that touches almost 50% of the data (e.g., nchapters).
+As expected, the missing values are heavily skewed in some variables. Significant preprocessing is required on these missing values that touches almost 50% of the data (e.g., nchapters). We feel that a better approach is to split the data into meaningful parts and analyze these parts separately.
 
-Now let us look at the distribution of the outcome variable we are interested - viewed + explored + certified. This is the subset of all registered participants who viewed at least one video. Let us call this set the `engaged` set (Here we encode `engaged = 0` if a participant registered but did not view a single video). 
+Now let us look at the distribution of the outcome variable we are interested - `viewed` + `explored` + `certified`. This is the subset of all registered participants who viewed at least one video. Let us call this set the `engaged` set (Here we encode `engaged = 0` if a participant registered but did not view a single video). 
 
 ```{r}
 cb22x_df %>% 
@@ -73,9 +72,9 @@ cb22x_df %>%
        caption = "Note: a registered participant engaged if they watched at least one video")
 ```
 
-Figure 1 highlights the first question we wish to explore - a large chunk of the registered participants drop out even before watching a single video. We wish to explore:
+Figure 1 highlights the first question we wish to explore - a large chunk of the registered participants drop out even before watching a single video. This raises the following questions:
   1. Are any systemic variations in the engaged vs the not enagaged?
-  2. What features of the registered participants are most predictive of drop out at this stage? Are these features captured in the data?
+  2. What features of the registered participants are most predictive of drop out at this stage? Are these features captured in the available data?
   
 One way to explore the systemic variation is to see if there are any differences in engagement based on the participant profile (e.g., demographics).
 
@@ -108,9 +107,11 @@ cb22x_df %>%
 grid.arrange(p1, p2, nrow = 2)
 ```
 
-Note that we have taken out the missing values in Figure 2 and 3. The good thing we observe here is that there is no severe class imbalance to contend with.
+Note that we have taken out the missing values in Figure 2 and 3. 
 
-Let us run a random forest model to see if the collected features, i.e., gender, age, education level and country are predictive of the drop out rate at the outset. We suspect that these features will be weakly predictive.  
+The good thing we observe here is that there is no severe class imbalance among engaged and non-engaged participants to contend with.
+
+Let us run logistic regression and random forests models to see if the collected features, i.e., gender, age, education level and country are predictive of the drop out rate at the outset. We suspect that these features will be weakly predictive, i.e., there are more behavioral aspects that are not available in the data that are strongly predictive of drop-out. An aside note, since the course is on Greek history, particularly interesting would be the response of participants from Greece (this is not central to the similarities we wish to draw across the different courses, so we let this chain of thought be for the moment).    
 
 ```{r}
 mooc_df %>% 
@@ -151,7 +152,7 @@ cb22x_train <- cb22x_neng_df[tr_rows, ]
 cb22x_test <- cb22x_neng_df[-tr_rows, ]
 
 cb22x_neng_logit <- train(factor(engaged) ~ .,
-                          data = cb22x_neng_df,
+                          data = cb22x_train,
                           method = "glm",
                           trControl = trainControl(method = "repeatedcv",
                                                    number = 10,
@@ -160,24 +161,145 @@ cb22x_neng_logit <- train(factor(engaged) ~ .,
                           family = binomial(link = "logit"))
 
 summary(cb22x_neng_logit)
+```
+
+```{r}
 cb22x_neng_logit$results
 
+
+```
+
+```{r}
 cb22x_neng_rf <- train(factor(engaged) ~ .,
-                       data = cb22x_neng_df,
+                       data = cb22x_train,
                        method = "rf",
                        tuneGrid = expand.grid(mtry = 1:4),
                        trControl = trainControl(method = "repeatedcv",
                                                 number = 10,
-                                                repeats = 5,
-                                                allowParallel = TRUE))
+                                                repeats = 3,
+                                                allowParallel = TRUE),
+                       ntree= 1000)
 
 cb22x_neng_rf$results
 ```
 
-Logit or random forest get us to about 60% accuracy on cross-validation. This is not a great improvement over random guessing or going with the dominant class.
+```{r}
+varImp(cb22x_neng_rf)
+```
 
 
-## On those who engaged... ##
-Since the quizzes were embedded within the chapters, participants who earned a certificate had to complete at least 50% of the chapters. As noted in the introduction document, the researchers also divided the participants into three categories - viewers, explorers and certified. At one end of the spectrum were the viewers (i.e., participants who saw up to about 50% of the videos). Particularly interesting are the viewers who were eventually certified (called 'optimizers'), i.e., smart people who viewed precisely the required amount of content for them to earn a certificate (by acing almost every quiz they encountered along the way). Let us probe deeper into  
+Logit or random forests get us to about 60% accuracy on repeated cross-validation. This is not a great improvement over random guessing or going with the dominant class. These results point to the observation that while age, gender and education do seem to be predictive of initial drop out, they are not strongly predictive.
 
+## 3. On those who did show up... ##
+
+Since the quizzes were embedded within the chapters, participants who earned a certificate had to complete at least 50% of the chapters. As noted in the introduction document, the researchers also divided the participants into three categories - viewers, explorers and certified. At one end of the spectrum were the viewers (i.e., participants who saw up to about 50% of the videos). Particularly interesting are the viewers who were eventually certified (called 'optimizers'), i.e., smart people who viewed precisely the required amount of content for them to earn a certificate (by acing almost every quiz they encountered along the way).
+
+The initial hunch we have is that the number of chapters a participant peruses is a reflection of the utility gained by the participant. The more chapters they engage in their reward, i.e., the knowledge they gain, the number of points they earn and the chance of obtaining a certificate increase. We decide to make this the outcome.  
+
+```{r}
+mooc_df %>% 
+  filter(course_id == "HarvardX/CB22x/2013_Spring", is.na(incomplete_flag)) %>% 
+  select(userid_DI, ndays_act, registered, explored, certified, viewed, 
+         start_time_DI, last_event_DI, nevents, nchapters, nforum_posts, 
+         nplay_video, LoE_DI, gender, YoB, final_cc_cname_DI) %>% 
+  filter(viewed == 1 | explored == 1 | certified == 1) %>% 
+  select(nchapters, everything(), -registered, -explored, -certified, -viewed, 
+         -userid_DI, -nplay_video) %>% 
+  drop_na() ->
+  cb22x_eng_df
+
+glimpse(cb22x_eng_df)
+```
+
+Now we munge the data to formulate the features amenable for modeling.
+
+```{r}
+cb22x_eng_df %>% 
+  mutate(age = 2013 - as.numeric(YoB),
+         country = case_when(final_cc_cname_DI == "United States" ~ "US",
+                             final_cc_cname_DI %in% c("India", "Pakistan", 
+                                                      "Bangladesh", "China",
+                                                      "Indonesia", "Japan", 
+                                                      "Other East Asia", "Other Middle East/Central Asia",
+                                                      "Other South Asia", "Philippines",
+                                                      "Egypt") ~ "AS",
+                             final_cc_cname_DI %in% c("France", "Germany", 
+                                                      "Greece", "Other Europe",
+                                                      "Poland", "Portugal", 
+                                                      "Russian Federation", "Spain",
+                                                      "Ukraine", "United Kingdom") ~ "EU",
+                             final_cc_cname_DI %in% c("Morocco", "Nigeria", 
+                                                      "Other Africa") ~ "AF",
+                             TRUE ~ "OT"),
+         education = case_when(LoE_DI == "Less than Secondary" ~ "LS",
+                               LoE_DI == "Secondary" ~ "SE",
+                               LoE_DI == "Bachelor's" ~ "BA",
+                               LoE_DI == "Master's" ~ "MA",
+                               LoE_DI == "Doctorate" ~ "DO"),
+         active_day_count = ndays_act,
+         active_period = as.numeric(last_event_DI - start_time_DI)) %>% 
+  mutate(gender = factor(gender),
+         country = factor(country),
+         education = factor(education)) %>% 
+  filter(active_period >= 0) %>% 
+  filter(!(active_period == 0 & ndays_act > 1)) %>% 
+  select(nchapters, active_day_count, active_period, everything(), 
+         -ndays_act, -nforum_posts, -start_time_DI, -last_event_DI, -LoE_DI, 
+         -YoB, -final_cc_cname_DI) %>% 
+  mutate(wghtd_engagement = (nevents/var(nevents) + nchapters/var(nchapters))/sum(1/var(nevents) + 1/var(nchapters))) %>% 
+  select(wghtd_engagement, nchapters, nevents, everything()) ->
+  cb22x_clean
+
+glimpse(cb22x_clean)
+
+summary(cb22x_clean$wghtd_engagement)
+
+qplot(cb22x_clean$wghtd_engagement, geom = "histogram") +
+  labs(x = "Weighted engagement",
+       y = "Count",
+       title = "Distribution of weighted engagement (Harvard CB22x)")
+```
+
+```{r}
+glimpse(cb22x_clean)
+```
+
+```{r}
+tr_rows <- createDataPartition(cb22x_clean$wghtd_engagement, p = 0.8, list = FALSE)
+
+cb22x_train <- cb22x_clean[tr_rows, ]
+cb22x_test <- cb22x_clean[-tr_rows, ]
+
+cb22x_enet <- train(log(wghtd_engagement) ~ active_day_count + active_period + gender + age + country + education,
+                    data = cb22x_train,
+                    method = "enet",
+                    preProcess = c("center", "scale"),
+                    tuneGrid = expand.grid(.lambda = c(0, 0.01, 0.1),
+                                        .fraction = seq(0.05, 1, length.out = 20)),
+                    trControl = trainControl(method = "repeatedcv",
+                                             number = 10,
+                                             repeats = 5,
+                                             allowParallel = TRUE))
+
+cb22x_enet$results
+plot(cb22x_enet)
+```
+
+```{r}
+cb22x_lm <- train(log(wghtd_engagement) ~ active_day_count + active_period + gender + age + country + education,
+                    data = cb22x_train,
+                    method = "lm",
+                    preProcess = c("center", "scale"),
+                    trControl = trainControl(method = "repeatedcv",
+                                             number = 10,
+                                             repeats = 5,
+                                             allowParallel = TRUE))
+
+summary(cb22x_lm)
+```
+
+```{r}
+plot(lm(log(wghtd_engagement) ~ active_day_count + active_period + gender + age + country + education,
+        data = cb22x_clean))
+```
 
