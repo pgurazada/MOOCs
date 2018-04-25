@@ -1,9 +1,9 @@
 #' ---
-#' title: "Analysis of CS50X"
+#' title: "Analysis of PH207x"
 #' author: Pavan Gurazada
 #' output: github_document
 #' ---
-#' last update: Tue Apr 24 10:18:44 2018
+#' last update: Wed Apr 25 10:12:05 2018
 
 library(tidyverse)
 library(ggthemes)
@@ -23,25 +23,27 @@ mooc_df <- read_csv("data/HMXPC13_DI_v2_5-14-14.csv", progress = TRUE)
 glimpse(mooc_df)
 
 mooc_df %>% 
-  filter(course_id == "HarvardX/CS50x/2012", is.na(incomplete_flag)) %>% 
+  filter(course_id == "HarvardX/PH207x/2012_Fall", is.na(incomplete_flag)) %>% 
   select(userid_DI, grade, ndays_act, registered, explored, certified, viewed, 
          start_time_DI, last_event_DI, nevents, nchapters, nforum_posts, 
          LoE_DI, gender, YoB, final_cc_cname_DI) ->
-  cs50x_df
+  ph207x_df
 
-glimpse(cs50x_df)
+glimpse(ph207x_df)
 
-#' The CS50x course is an introductory Computer Science course that deals with a 
-#' broad range of topics. The emphasis is on breadth of topics rather than depth.
-#' Given the nature of the course, it attracts a large audience.
+#' The PH207x course is an introduction to biostatistics that focuses on
+#' deriving meaning from health data on a sample of individuals. The course is
+#' essentially a survey of statistics relevant to the health field. As such this
+#' course is tailered towards learners with at least a keen interest in health
+#' and safety
 
-cs50x_df %>%
+ph207x_df %>%
   gather(Variable, Value) %>% 
   group_by(Variable) %>% 
   summarize(missing_perc = floor(sum(is.na(Value)) * 100/length(Value)))
 
 dev.new()
-cs50x_df %>% 
+ph207x_df %>% 
   select(registered, viewed, explored, certified) %>% 
   mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0)) %>% 
   ggplot() +
@@ -50,26 +52,25 @@ cs50x_df %>%
   scale_fill_grey() +
   labs(x = "Engaged?",
        y = "Proportion",
-       title = "Distribution of registered participants (Harvard CS50x)",
+       title = "Distribution of registered participants (Harvard PH207x)",
        caption = "Note: a registered participant engaged if they watched at least one video")
 
-#' The above figure shows a 60-40 split between the notengaged-engaged
-#' participants. 60% drop out before a single video is watched is not a good
-#' sign
+#' The above figure shows a 40-60 split between the notengaged-engaged
+#' participants. 
 
-cs50x_df %>% 
+er22x_df %>% 
   select(registered, viewed, explored, certified, gender) %>% 
   mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0)) %>%
   drop_na() %>% 
   ggplot() +
   geom_bar(aes(x = engaged, fill = gender)) +
   scale_x_continuous(breaks = c(0.0, 1.0), labels = c("0", "1")) +
-  scale_fill_grey("Gender", labels = c("Female", "Male", "Other")) +
+  scale_fill_grey("Gender", labels = c("Female", "Male")) +
   labs(x = "Engaged?",
        y = "Count",
-       title = "Distribution of registered participants by gender (Harvard CS50x)") -> p1
+       title = "Distribution of registered participants by gender (Harvard ER22x)") -> p1
 
-cs50x_df %>% 
+er22x_df %>% 
   select(registered, viewed, explored, certified, LoE_DI) %>% 
   mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0),
          LoE_DI = factor(LoE_DI, levels = c("Less than Secondary", "Secondary", "Bachelor's", "Master's", "Doctorate"))) %>%
@@ -80,7 +81,7 @@ cs50x_df %>%
   scale_fill_grey("Education") +
   labs(x = "Engaged?",
        y = "Count",
-       title = "Distribution of registered participants by level of education (Harvard CS50x)") -> p2
+       title = "Distribution of registered participants by level of education (Harvard Er22x)") -> p2
 
 grid.arrange(p1, p2, nrow = 2)
 
@@ -88,7 +89,7 @@ grid.arrange(p1, p2, nrow = 2)
 #' class imbalance is not severe
 
 mooc_df %>% 
-  filter(course_id == "HarvardX/CS50x/2012", is.na(incomplete_flag)) %>%
+  filter(course_id == "HarvardX/ER22x/2013_Spring", is.na(incomplete_flag)) %>%
   select(registered, viewed, explored, certified, gender, LoE_DI, YoB, final_cc_cname_DI) %>% 
   mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0),
          age = 2012 - as.numeric(YoB),
@@ -117,17 +118,19 @@ mooc_df %>%
          education = factor(education)) %>% 
   select(engaged, everything(), -registered, -viewed, -explored, -certified, -final_cc_cname_DI, -LoE_DI, -YoB) %>% 
   drop_na() ->
-  cs50x_neng_df
+  er22x_neng_df
 
-glimpse(cs50x_neng_df)
+glimpse(er22x_neng_df)
 
-tr_rows <- createDataPartition(cs50x_neng_df$engaged, p = 0.8, list = FALSE)
+#' We fit a couple of model to see if we can predict engagement from demographics
 
-cs50x_train <- cs50x_neng_df[tr_rows, ]
-cs50x_test <- cs50x_neng_df[-tr_rows, ]
+tr_rows <- createDataPartition(er22x_neng_df$engaged, p = 0.8, list = FALSE)
 
-cs50x_neng_logit <- train(factor(engaged) ~ .,
-                          data = cs50x_train,
+er22x_train <- er22x_neng_df[tr_rows, ]
+er22x_test <- er22x_neng_df[-tr_rows, ]
+
+er22x_neng_logit <- train(factor(engaged) ~ .,
+                          data = er22x_train,
                           method = "glm",
                           trControl = trainControl(method = "repeatedcv",
                                                    number = 10,
@@ -135,24 +138,23 @@ cs50x_neng_logit <- train(factor(engaged) ~ .,
                                                    allowParallel = TRUE),
                           family = binomial(link = "logit"))
 
-summary(cs50x_neng_logit)
+summary(er22x_neng_logit)
 
-cs50x_neng_logit$results
+er22x_neng_logit$results
 
-#' The logit returns a 68% accuracy on initial dropout just based on the
+#' The logit returns a 65% accuracy on initial dropout just based on the
 #' demographics
 
-cs50x_neng_rf <- train(factor(engaged) ~ .,
-                       data = cs50x_train,
+er22x_neng_rf <- train(factor(engaged) ~ .,
+                       data = er22x_train,
                        method = "rf",
                        tuneGrid = expand.grid(mtry = 1:4),
                        trControl = trainControl(method = "repeatedcv",
                                                 number = 10,
                                                 repeats = 3,
-                                                allowParallel = TRUE),
-                       ntree= 1000)
+                                                allowParallel = TRUE))
 
-cs50x_neng_rf$results
-varImp(cs50x_neng_rf)
+er22x_neng_rf$results
+varImp(er22x_neng_rf)
 
 #' Random forests also do no better than 68%

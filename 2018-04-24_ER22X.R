@@ -51,7 +51,7 @@ er22x_df %>%
   scale_fill_grey() +
   labs(x = "Engaged?",
        y = "Proportion",
-       title = "Distribution of registered participants (Harvard ER22X)",
+       title = "Distribution of registered participants (Harvard ER22x)",
        caption = "Note: a registered participant engaged if they watched at least one video")
 
 #' The above figure shows a 40-60 split between the notengaged-engaged
