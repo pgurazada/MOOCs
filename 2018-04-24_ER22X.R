@@ -24,7 +24,7 @@ mooc_df <- read_csv("data/HMXPC13_DI_v2_5-14-14.csv", progress = TRUE)
 glimpse(mooc_df)
 
 mooc_df %>% 
-  filter(course_id == "HarvardX/ER22x/2013_Spring", is.na(incomplete_flag)) %>% 
+  filter(course_id == "HarvardX/ER22x/2013_Spring") %>% 
   select(userid_DI, grade, ndays_act, registered, explored, certified, viewed, 
          start_time_DI, last_event_DI, nevents, nchapters, nforum_posts, 
          LoE_DI, gender, YoB, final_cc_cname_DI) ->
@@ -88,11 +88,19 @@ grid.arrange(p1, p2, nrow = 2)
 #' class imbalance is not severe
 
 mooc_df %>% 
-  filter(course_id == "HarvardX/ER22x/2013_Spring", is.na(incomplete_flag)) %>%
+  filter(course_id == "HarvardX/ER22x/2013_Spring") %>%
   select(registered, viewed, explored, certified, gender, LoE_DI, YoB, final_cc_cname_DI) %>% 
   mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0),
-         age = 2012 - as.numeric(YoB),
-         gender = factor(gender),
+         launch_date = as.Date("2013-03-02"),
+         registered_before_launch = if_else(as.numeric(launch_date - start_time_DI) > 0,
+                                            as.numeric(launch_date - start_time_DI),
+                                            0),
+         registered_after_launch = if_else(as.numeric(launch_date - start_time_DI) > 0,
+                                           0,
+                                           -as.numeric(launch_date - start_time_DI)),
+         age = 2013 - as.numeric(YoB),
+         male = case_when(gender == "m" ~ 1,
+                          gender == "f" ~ 0),
          country = case_when(final_cc_cname_DI == "United States" ~ "US",
                              final_cc_cname_DI %in% c("India", "Pakistan", 
                                                       "Bangladesh", "China",

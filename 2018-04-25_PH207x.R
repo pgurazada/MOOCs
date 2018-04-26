@@ -23,7 +23,7 @@ mooc_df <- read_csv("data/HMXPC13_DI_v2_5-14-14.csv", progress = TRUE)
 glimpse(mooc_df)
 
 mooc_df %>% 
-  filter(course_id == "HarvardX/PH207x/2012_Fall", is.na(incomplete_flag)) %>% 
+  filter(course_id == "HarvardX/PH207x/2012_Fall") %>% 
   select(userid_DI, grade, ndays_act, registered, explored, certified, viewed, 
          start_time_DI, last_event_DI, nevents, nchapters, nforum_posts, 
          LoE_DI, gender, YoB, final_cc_cname_DI) ->
@@ -58,7 +58,7 @@ ph207x_df %>%
 #' The above figure shows a 40-60 split between the notengaged-engaged
 #' participants. 
 
-er22x_df %>% 
+ph207x_df %>% 
   select(registered, viewed, explored, certified, gender) %>% 
   mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0)) %>%
   drop_na() %>% 
@@ -68,9 +68,9 @@ er22x_df %>%
   scale_fill_grey("Gender", labels = c("Female", "Male")) +
   labs(x = "Engaged?",
        y = "Count",
-       title = "Distribution of registered participants by gender (Harvard ER22x)") -> p1
+       title = "Distribution of registered participants by gender (Harvard PH207x)") -> p1
 
-er22x_df %>% 
+ph207x_df %>% 
   select(registered, viewed, explored, certified, LoE_DI) %>% 
   mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0),
          LoE_DI = factor(LoE_DI, levels = c("Less than Secondary", "Secondary", "Bachelor's", "Master's", "Doctorate"))) %>%
@@ -81,19 +81,27 @@ er22x_df %>%
   scale_fill_grey("Education") +
   labs(x = "Engaged?",
        y = "Count",
-       title = "Distribution of registered participants by level of education (Harvard Er22x)") -> p2
+       title = "Distribution of registered participants by level of education (Harvard PH207x)") -> p2
 
 grid.arrange(p1, p2, nrow = 2)
 
-#' The above figure shows that the course is dominated by a male audience! Also,
-#' class imbalance is not severe
+#' As one would expect this ccourse is dominated by learners with bachelors and
+#' masters degrees
 
 mooc_df %>% 
-  filter(course_id == "HarvardX/ER22x/2013_Spring", is.na(incomplete_flag)) %>%
+  filter(course_id == "HarvardX/PH207x/2012_Fall") %>%
   select(registered, viewed, explored, certified, gender, LoE_DI, YoB, final_cc_cname_DI) %>% 
   mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0),
-         age = 2012 - as.numeric(YoB),
-         gender = factor(gender),
+         launch_date = as.Date("2012-10-15"),
+         registered_before_launch = if_else(as.numeric(launch_date - start_time_DI) > 0,
+                                            as.numeric(launch_date - start_time_DI),
+                                            0),
+         registered_after_launch = if_else(as.numeric(launch_date - start_time_DI) > 0,
+                                           0,
+                                           -as.numeric(launch_date - start_time_DI)),
+         age = 2013 - as.numeric(YoB),
+         male = case_when(gender == "m" ~ 1,
+                          gender == "f" ~ 0),
          country = case_when(final_cc_cname_DI == "United States" ~ "US",
                              final_cc_cname_DI %in% c("India", "Pakistan", 
                                                       "Bangladesh", "China",
@@ -116,45 +124,46 @@ mooc_df %>%
                                LoE_DI == "Doctorate" ~ "DO")) %>% 
   mutate(country = factor(country),
          education = factor(education)) %>% 
-  select(engaged, everything(), -registered, -viewed, -explored, -certified, -final_cc_cname_DI, -LoE_DI, -YoB) %>% 
+  select(engaged, everything(), -registered, -viewed, -explored, -certified, 
+                                -final_cc_cname_DI, -LoE_DI, -YoB, -gender) %>% 
   drop_na() ->
-  er22x_neng_df
+  ph207x_neng_df
 
-glimpse(er22x_neng_df)
+glimpse(ph207x_neng_df)
 
-#' We fit a couple of model to see if we can predict engagement from demographics
+#' We fit a couple of models to see if we can predict engagement from demographics
 
-tr_rows <- createDataPartition(er22x_neng_df$engaged, p = 0.8, list = FALSE)
+tr_rows <- createDataPartition(ph207x_neng_df$engaged, p = 0.8, list = FALSE)
 
-er22x_train <- er22x_neng_df[tr_rows, ]
-er22x_test <- er22x_neng_df[-tr_rows, ]
+ph207x_train <- ph207x_neng_df[tr_rows, ]
+ph207x_test <- ph207x_neng_df[-tr_rows, ]
 
-er22x_neng_logit <- train(factor(engaged) ~ .,
-                          data = er22x_train,
-                          method = "glm",
-                          trControl = trainControl(method = "repeatedcv",
-                                                   number = 10,
-                                                   repeats = 5,
-                                                   allowParallel = TRUE),
-                          family = binomial(link = "logit"))
+ph207x_neng_logit <- train(factor(engaged) ~ .,
+                           data = ph207x_train,
+                           method = "glm",
+                           trControl = trainControl(method = "repeatedcv",
+                                                    number = 10,
+                                                    repeats = 5,
+                                                    allowParallel = TRUE),
+                           family = binomial(link = "logit"))
 
-summary(er22x_neng_logit)
+summary(ph207x_neng_logit)
 
-er22x_neng_logit$results
+ph207x_neng_logit$results
 
-#' The logit returns a 65% accuracy on initial dropout just based on the
+#' The logit returns a 60% accuracy on initial dropout just based on the
 #' demographics
 
-er22x_neng_rf <- train(factor(engaged) ~ .,
-                       data = er22x_train,
-                       method = "rf",
-                       tuneGrid = expand.grid(mtry = 1:4),
-                       trControl = trainControl(method = "repeatedcv",
-                                                number = 10,
-                                                repeats = 3,
-                                                allowParallel = TRUE))
+ph207x_neng_rf <- train(factor(engaged) ~ .,
+                        data = ph207x_train,
+                        method = "rf",
+                        tuneGrid = expand.grid(mtry = 1:4),
+                        trControl = trainControl(method = "repeatedcv",
+                                                 number = 10,
+                                                 repeats = 3,
+                                                 allowParallel = TRUE))
 
-er22x_neng_rf$results
-varImp(er22x_neng_rf)
+ph207x_neng_rf$results
+varImp(ph207x_neng_rf)
 
-#' Random forests also do no better than 68%
+#' Random forests also do no better than 61%

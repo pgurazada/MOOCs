@@ -1,9 +1,9 @@
 #' ---
-#' title: "Analysis of CS50X"
+#' title: "Anaysis of Harvard PH278x"
 #' author: Pavan Gurazada
 #' output: github_document
 #' ---
-#' last update: Tue Apr 24 10:18:44 2018
+#' last update: Wed Apr 25 11:51:26 2018
 
 library(tidyverse)
 library(ggthemes)
@@ -23,25 +23,24 @@ mooc_df <- read_csv("data/HMXPC13_DI_v2_5-14-14.csv", progress = TRUE)
 glimpse(mooc_df)
 
 mooc_df %>% 
-  filter(course_id == "HarvardX/CS50x/2012") %>% 
+  filter(course_id == "HarvardX/PH278x/2013_Spring") %>% 
   select(userid_DI, grade, ndays_act, registered, explored, certified, viewed, 
          start_time_DI, last_event_DI, nevents, nchapters, nforum_posts, 
          LoE_DI, gender, YoB, final_cc_cname_DI) ->
-  cs50x_df
+  ph278x_df
 
-glimpse(cs50x_df)
+glimpse(ph278x_df)
 
-#' The CS50x course is an introductory Computer Science course that deals with a 
-#' broad range of topics. The emphasis is on breadth of topics rather than depth.
-#' Given the nature of the course, it attracts a large audience.
+#' The PH278x course focuses on global environmental changes, its causes, health 
+#' consequences, and proposed solutions
 
-cs50x_df %>%
+ph278x_df %>%
   gather(Variable, Value) %>% 
   group_by(Variable) %>% 
   summarize(missing_perc = floor(sum(is.na(Value)) * 100/length(Value)))
 
 dev.new()
-cs50x_df %>% 
+ph278x_df %>% 
   select(registered, viewed, explored, certified) %>% 
   mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0)) %>% 
   ggplot() +
@@ -50,26 +49,25 @@ cs50x_df %>%
   scale_fill_grey() +
   labs(x = "Engaged?",
        y = "Proportion",
-       title = "Distribution of registered participants (Harvard CS50x)",
+       title = "Distribution of registered participants (Harvard PH278x)",
        caption = "Note: a registered participant engaged if they watched at least one video")
 
 #' The above figure shows a 60-40 split between the notengaged-engaged
-#' participants. 60% drop out before a single video is watched is not a good
-#' sign
+#' participants. 
 
-cs50x_df %>% 
+ph278x_df %>% 
   select(registered, viewed, explored, certified, gender) %>% 
   mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0)) %>%
   drop_na() %>% 
   ggplot() +
   geom_bar(aes(x = engaged, fill = gender)) +
   scale_x_continuous(breaks = c(0.0, 1.0), labels = c("0", "1")) +
-  scale_fill_grey("Gender", labels = c("Female", "Male", "Other")) +
+  scale_fill_grey("Gender", labels = c("Female", "Male")) +
   labs(x = "Engaged?",
        y = "Count",
-       title = "Distribution of registered participants by gender (Harvard CS50x)") -> p1
+       title = "Distribution of registered participants by gender (Harvard PH278x)") -> p1
 
-cs50x_df %>% 
+ph278x_df %>% 
   select(registered, viewed, explored, certified, LoE_DI) %>% 
   mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0),
          LoE_DI = factor(LoE_DI, levels = c("Less than Secondary", "Secondary", "Bachelor's", "Master's", "Doctorate"))) %>%
@@ -80,19 +78,17 @@ cs50x_df %>%
   scale_fill_grey("Education") +
   labs(x = "Engaged?",
        y = "Count",
-       title = "Distribution of registered participants by level of education (Harvard CS50x)") -> p2
+       title = "Distribution of registered participants by level of education (Harvard PH278x)") -> p2
 
 grid.arrange(p1, p2, nrow = 2)
 
-#' The above figure shows that the course is dominated by a male audience! Also,
-#' class imbalance is not severe
+#' This course had an even split of male-female
 
 mooc_df %>% 
-  filter(course_id == "HarvardX/CS50x/2012") %>%
-  select(registered, viewed, explored, certified, 
-         gender, LoE_DI, YoB, final_cc_cname_DI, start_time_DI) %>% 
+  filter(course_id == "HarvardX/PH278x/2013_Spring") %>%
+  select(registered, viewed, explored, certified, gender, LoE_DI, YoB, final_cc_cname_DI) %>% 
   mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0),
-         launch_date = as.Date("2012-10-15"),
+         launch_date = as.Date("2013-05-15"),
          registered_before_launch = if_else(as.numeric(launch_date - start_time_DI) > 0,
                                             as.numeric(launch_date - start_time_DI),
                                             0),
@@ -124,44 +120,46 @@ mooc_df %>%
                                LoE_DI == "Doctorate" ~ "DO")) %>% 
   mutate(country = factor(country),
          education = factor(education)) %>% 
-  select(engaged, everything(), -registered, -viewed, -explored, -certified, -final_cc_cname_DI, -LoE_DI, -YoB) %>% 
+  select(engaged, everything(), -registered, -viewed, -explored, -certified, 
+         -final_cc_cname_DI, -LoE_DI, -YoB, -gender) %>% 
   drop_na() ->
-  cs50x_neng_df
+  ph278x_neng_df
 
-glimpse(cs50x_neng_df)
+glimpse(ph278x_neng_df)
 
-tr_rows <- createDataPartition(cs50x_neng_df$engaged, p = 0.8, list = FALSE)
+#' We fit a couple of models to see if we can predict engagement from demographics
 
-cs50x_train <- cs50x_neng_df[tr_rows, ]
-cs50x_test <- cs50x_neng_df[-tr_rows, ]
+tr_rows <- createDataPartition(ph278x_neng_df$engaged, p = 0.8, list = FALSE)
 
-cs50x_neng_logit <- train(factor(engaged) ~ .,
-                          data = cs50x_train,
-                          method = "glm",
-                          trControl = trainControl(method = "repeatedcv",
-                                                   number = 10,
-                                                   repeats = 5,
-                                                   allowParallel = TRUE),
-                          family = binomial(link = "logit"))
+ph278x_train <- ph278x_neng_df[tr_rows, ]
+ph278x_test <- ph278x_neng_df[-tr_rows, ]
 
-summary(cs50x_neng_logit)
+ph278x_neng_logit <- train(factor(engaged) ~ .,
+                           data = ph278x_train,
+                           method = "glm",
+                           trControl = trainControl(method = "repeatedcv",
+                                                    number = 10,
+                                                    repeats = 5,
+                                                    allowParallel = TRUE),
+                           family = binomial(link = "logit"))
 
-cs50x_neng_logit$results
+summary(ph278x_neng_logit)
 
-#' The logit returns a 68% accuracy on initial dropout just based on the
+ph278x_neng_logit$results
+
+#' The logit returns a 62% accuracy on initial dropout just based on the
 #' demographics
 
-cs50x_neng_rf <- train(factor(engaged) ~ .,
-                       data = cs50x_train,
-                       method = "rf",
-                       tuneGrid = expand.grid(mtry = 1:4),
-                       trControl = trainControl(method = "repeatedcv",
-                                                number = 10,
-                                                repeats = 3,
-                                                allowParallel = TRUE),
-                       ntree= 1000)
+ph278x_neng_rf <- train(factor(engaged) ~ .,
+                        data = ph278x_train,
+                        method = "rf",
+                        tuneGrid = expand.grid(mtry = 1:4),
+                        trControl = trainControl(method = "repeatedcv",
+                                                 number = 10,
+                                                 repeats = 3,
+                                                 allowParallel = TRUE))
 
-cs50x_neng_rf$results
-varImp(cs50x_neng_rf)
+ph278x_neng_rf$results
+varImp(ph278x_neng_rf)
 
-#' Random forests also do no better than 68%
+#' Random forests also do no better than 62%
