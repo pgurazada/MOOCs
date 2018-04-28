@@ -88,7 +88,7 @@ mooc_df %>%
   select(registered, viewed, explored, certified, 
          gender, LoE_DI, YoB, final_cc_cname_DI, start_time_DI) %>% 
   mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0),
-         launch_date = as.Date("2013-02-04"),
+         launch_date = as.Date("2012-09-06"),
          registered_before_launch = if_else(as.numeric(launch_date - start_time_DI) > 0,
                                             as.numeric(launch_date - start_time_DI),
                                             0),
