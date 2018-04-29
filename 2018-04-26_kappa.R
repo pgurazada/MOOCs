@@ -8,8 +8,6 @@
 library(caret)
 library(tidyverse)
 library(ggthemes)
-library(gridExtra)
-library(feather)
 
 set.seed(20130810)
 
@@ -149,6 +147,8 @@ mooc_df %>%
 
 kappa_list[[course]] <- kappa_vec
 
+
+stopCluster(cluster)
 
 #' Alternative apprroach to transfer data into a dataframe and run modeling in
 #' another language
