@@ -8,6 +8,7 @@
 library(caret)
 library(tidyverse)
 library(ggthemes)
+library(gridExtra)
 
 set.seed(20130810)
 
@@ -47,10 +48,43 @@ mooc_df %>%
 glimpse(features_df)
 
 dev.new()
-ggplot(features_df %>% filter(grepl("Harvard", course_id))) +
-  geom_point(aes(x = gender, y = engaged, color = course_id), position = position_jitter()) +
-  scale_color_discrete("Course") +
-  scale_x_continuous("Gender", 
-                     breaks = c(0, 1), 
-                     labels = c("Female", "Male"))
+ggplot(features_df %>% filter(grepl("Harvard", course_id)) %>% filter(age > 10)) +
+  geom_boxplot(aes(x = factor(engaged), y = age)) + 
+  scale_x_discrete(labels = c("Not Engaged", "Engaged")) +
+  labs(x = "Student status",
+       y = "Age",
+       title = "Distribution of outcome by age (Harvard courses)") +
+  coord_flip() -> harvard_age
 
+ggplot(features_df %>% filter(grepl("MIT", course_id)) %>% filter(age > 10)) +
+  geom_boxplot(aes(x = factor(engaged), y = age)) + 
+  scale_x_discrete(labels = c("Not Engaged", "Engaged")) +
+  labs(x = "Student status",
+       y = "Age",
+       title = "Distribution of outcome by age (MIT courses)") +
+  coord_flip() -> mit_age
+
+age_plot <- grid.arrange(harvard_age, mit_age, nrow = 2)
+ggsave("2018-04-30_activity-age-distribution.png", age_plot, width = 9, height = 7)
+
+dev.new()
+ggplot(features_df %>% filter(grepl("Harvard", course_id))) +
+  geom_bar(aes(x = factor(engaged), fill = education), width = 0.5) + 
+  scale_fill_grey("Education") +
+  scale_x_discrete("Student Status", labels = c("Not Engaged", "Engaged")) +
+  labs(y = "Count",
+       title = "Distribution of outcome by education (Harvard courses)") +
+  coord_flip() -> 
+  harvard_education
+
+ggplot(features_df %>% filter(grepl("MIT", course_id))) +
+  geom_bar(aes(x = factor(engaged), fill = education), width = 0.5) + 
+  scale_fill_grey("Education") +
+  scale_x_discrete("Student Status", labels = c("Not Engaged", "Engaged")) +
+  labs(y = "Count",
+       title = "Distribution of outcome by education (MIT courses)") +
+  coord_flip() -> 
+  mit_education
+
+education_plot <- grid.arrange(harvard_education, mit_education, nrow = 2)
+ggsave("2018-04-30_activity-education-distribution.png", education_plot, width = 9, height = 7)
