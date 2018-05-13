@@ -16,37 +16,42 @@ y_train <- readRDS("MLP/cs50x_ytrain.rds")
 y_test <- readRDS("MLP/cs50x_ytest.rds")
 
 model <- keras_model_sequential() %>% 
-  layer_dense(units = 500, 
+  layer_dense(units = 400, 
               activation = 'relu', 
               input_shape = ncol(x_train)) %>% # layer 1
   
-  layer_dropout(rate = 0.1) %>% 
+  layer_dropout(rate = 0.2) %>% 
   
-  layer_dense(units = 250, 
+  layer_dense(units = 300, 
               activation = 'relu') %>% # layer 2
   
-  layer_dropout(rate = 0.1) %>% 
+  layer_dropout(rate = 0.2) %>% 
   
-  layer_dense(units = 100, 
+  layer_dense(units = 200, 
               activation = 'relu') %>% # layer 3
   
-  layer_dropout(rate = 0.1) %>%
+  layer_dropout(rate = 0.2) %>%
   
-  layer_dense(units = 50, 
+  layer_dense(units = 100, 
               activation = 'relu') %>% # layer 4
   
-  layer_dropout(rate = 0.1) %>%
+  layer_dropout(rate = 0.2) %>%
+  
+  layer_dense(units = 50, 
+              activation = 'relu') %>% # layer 5
+  
+  layer_dropout(rate = 0.2) %>%
   
   layer_dense(units = 1, 
               activation = 'sigmoid') # output
 
 compile(model, 
-        optimizer = optimizer_adam(lr = 0.005),
+        optimizer = optimizer_adam(decay = 0.1),
         loss = 'binary_crossentropy',
         metrics = c('accuracy'))
 
 history <- fit(model, x_train, y_train,
-               epochs = 10,
+               epochs = 5,
                batch_size = 100, 
                validation_split = 0.2)
 

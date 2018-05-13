@@ -17,16 +17,16 @@
 > y_test <- readRDS("MLP/cs50x_ytest.rds")
 
 > model <- keras_model_sequential() %>% 
-+   layer_dense(units = 500, 
++   layer_dense(units = 400, 
 +               activation = 'relu', 
 +               input_shape = ncol(x_trai .... [TRUNCATED] 
 
 > compile(model, 
-+         optimizer = optimizer_adam(lr = 0.005),
++         optimizer = optimizer_adam(decay = 0.1),
 +         loss = 'binary_crossentropy',
 +         metrics = c('accuracy'))
 
 > history <- fit(model, x_train, y_train,
-+                epochs = 10,
++                epochs = 5,
 +                batch_size = 100, 
 +                validation_split = 0.2)
