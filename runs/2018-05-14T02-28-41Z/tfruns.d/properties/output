@@ -1,0 +1,34 @@
+
+> #' ---
+> #' title: "Fitting a multi layer perceptron to CS50X"
+> #' author: Pavan Gurazada
+> #' output: github_document
+> #' ---
+> #' last update: S .... [TRUNCATED] 
+
+> #' *Building the MLP*
+> 
+> x_train <- readRDS("MLP/cs50x_xtrain.rds")
+
+> x_test <- readRDS("MLP/cs50x_xtest.rds")
+
+> y_train <- readRDS("MLP/cs50x_ytrain.rds")
+
+> y_test <- readRDS("MLP/cs50x_ytest.rds")
+
+> model <- keras_model_sequential() %>% 
++   layer_dense(units = 400, 
++               activation = 'relu', 
++               input_shape = ncol(x_trai .... [TRUNCATED] 
+
+> compile(model, 
++         optimizer = optimizer_adam(lr = 0.005,
++                                    decay = 0.1),
++         loss = 'binary_crossen .... [TRUNCATED] 
+
+> history <- fit(model, x_train, y_train,
++                epochs = 5,
++                batch_size = 100, 
++                validation_split = 0.2)
+
+> k_clear_session()
