@@ -1,0 +1,12 @@
+
+> #' ---
+> #' title: "Fitting a multi layer perceptron to CS50X"
+> #' author: Pavan Gurazada
+> #' output: github_document
+> #' ---
+> #' last update: S .... [TRUNCATED] 
+
+> #' *Building the MLP*
+> 
+> x_train <- readRDS("MLP/cs50x_xtrain.rds")
+
