@@ -84,6 +84,10 @@ glimpse(train_mat)
 x_train <- train_mat[, -1]
 x_test <- test_mat[, -1]
 
+# Take out the last column since it is all zeros
+x_train <- x_train[, -ncol(x_train)]
+x_test <- x_test[, -ncol(x_test)]
+
 y_train <- train_mat[, 1]
 y_test <- test_mat[, 1]
 

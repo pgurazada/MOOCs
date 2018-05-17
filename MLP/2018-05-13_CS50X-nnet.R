@@ -9,8 +9,8 @@ library(keras)
 
 #' *Building the MLP*
 
-x_train <- readRDS("MLP/cs50x_xtrain.rds")
-x_test <- readRDS("MLP/cs50x_xtest.rds")
+x_train_sc <- readRDS("MLP/cs50x_xtrain_sc.rds")
+x_test_sc <- readRDS("MLP/cs50x_xtest_sc.rds")
 
 y_train <- readRDS("MLP/cs50x_ytrain.rds")
 y_test <- readRDS("MLP/cs50x_ytest.rds")
@@ -23,7 +23,7 @@ FLAGS <- flags(flag_integer("dense_units1", 1000),
                flag_numeric("dropout3", 0.3),
                flag_integer("dense_units4", 50),
                flag_numeric("dropout4", 0.3),
-               flag_integer("epochs", 15),
+               flag_integer("epochs", 20),
                flag_integer("batch_size", 100),
                flag_numeric("learning_rate", 10^-6))
 
@@ -69,7 +69,7 @@ compile(model,
         loss = 'binary_crossentropy',
         metrics = c('accuracy'))
 
-history <- fit(model, x_train, y_train,
+history <- fit(model, x_train_sc, y_train,
                epochs = FLAGS$epochs,
                batch_size = FLAGS$batch_size,
                verbose = 1,
