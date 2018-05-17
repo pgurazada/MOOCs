@@ -25,13 +25,13 @@ FLAGS <- flags(flag_integer("dense_units1", 1000),
                flag_numeric("dropout4", 0.3),
                flag_integer("epochs", 20),
                flag_integer("batch_size", 100),
-               flag_numeric("learning_rate", 10^-6))
+               flag_numeric("learning_rate", 5 * 10^-5))
 
 model <- keras_model_sequential() %>% 
   layer_dense(units = FLAGS$dense_units1, 
               activation = 'relu',
               kernel_initializer = 'glorot_normal',
-              input_shape = ncol(x_train)) %>% # layer 1
+              input_shape = ncol(x_train_sc)) %>% # layer 1
   
   layer_batch_normalization() %>% 
   

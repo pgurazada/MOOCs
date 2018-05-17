@@ -11,8 +11,8 @@ library(pROC)
 
 #' *Building the MLP*
 
-x_train <- readRDS("MLP/cs50x_xtrain.rds")
-x_test <- readRDS("MLP/cs50x_xtest.rds")
+x_train_sc <- readRDS("MLP/cs50x_xtrain_sc.rds")
+x_test_sc <- readRDS("MLP/cs50x_xtest_sc.rds")
 
 y_train <- readRDS("MLP/cs50x_ytrain.rds")
 y_test <- readRDS("MLP/cs50x_ytest.rds")
@@ -20,7 +20,8 @@ y_test <- readRDS("MLP/cs50x_ytest.rds")
 model <- keras_model_sequential() %>% 
   layer_dense(units = 1000, 
               activation = 'relu',
-              input_shape = ncol(x_train)) %>% # layer 1
+              kernel_initializer = 'glorot_normal',
+              input_shape = ncol(x_train_sc)) %>% # layer 1
   
   layer_dropout(rate = 0.1) %>% 
   
