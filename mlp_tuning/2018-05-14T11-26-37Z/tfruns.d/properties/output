@@ -1,0 +1,43 @@
+
+> #' ---
+> #' title: "Fitting a multi layer perceptron to CS50X"
+> #' author: Pavan Gurazada
+> #' output: github_document
+> #' ---
+> #' last update: S .... [TRUNCATED] 
+
+> #' *Building the MLP*
+> 
+> x_train <- readRDS("MLP/cs50x_xtrain.rds")
+
+> x_test <- readRDS("MLP/cs50x_xtest.rds")
+
+> y_train <- readRDS("MLP/cs50x_ytrain.rds")
+
+> y_test <- readRDS("MLP/cs50x_ytest.rds")
+
+> FLAGS <- flags(flag_integer("dense_units1", 1000),
++                flag_numeric("dropout1", 0.2),
++                flag_integer("dense_units2", 500 .... [TRUNCATED] 
+
+> model <- keras_model_sequential() %>% 
++   layer_dense(units = FLAGS$dense_units1, 
++               activation = 'relu',
++               input_shape .... [TRUNCATED] 
+
+> compile(model, 
++         optimizer = optimizer_adam(lr = FLAGS$learning_rate),
++         loss = 'binary_crossentropy',
++         metrics = c('accur .... [TRUNCATED] 
+
+> history <- fit(model, x_train, y_train,
++                epochs = FLAGS$epochs,
++                batch_size = FLAGS$batch_size,
++                ver .... [TRUNCATED] 
+
+> k_clear_session()
+
+> # tuning_run("MLP/2018-05-13_CS50X-nnet.R",
+> #            runs_dir = "mlp_tuning",
+> #            sample = 0.01,
+> #            flags = list(dense_ .... [TRUNCATED] 

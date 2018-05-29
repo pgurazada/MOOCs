@@ -3,15 +3,14 @@
 #' author: Pavan Gurazada
 #' output: github_document
 #' ---
-#' last update: Sun May 13 13:23:29 2018
-
-#' In this script we explore if a neural net will perform better than the 
-#' usual suite of classification algorithms we explored within scikit
+#' last update: Thu May 17 11:06:03 2018
+#' 
+#' In this script we beat up the data into a form ready for ingestion by a
+#' neural network
 
 library(rsample)
 library(recipes)
 library(onehot)
-library(yardstick)
 library(tidyverse)
 library(ggthemes)
 
@@ -85,11 +84,20 @@ glimpse(train_mat)
 x_train <- train_mat[, -1]
 x_test <- test_mat[, -1]
 
+# Take out the last column since it is all zeros
+x_train <- x_train[, -ncol(x_train)]
+x_test <- x_test[, -ncol(x_test)]
+
 y_train <- train_mat[, 1]
 y_test <- test_mat[, 1]
 
-saveRDS(object = x_train, "MLP/cs50x_xtrain.rds")
-saveRDS(object = x_test, "MLP/cs50x_xtest.rds")
+x_train_sc <- scale(x_train)
+x_test_sc <- scale(x_test, 
+                   center = colMeans(x_train),
+                   scale = apply(x_train, 2, sd))
+
+saveRDS(object = x_train_sc, "MLP/cs50x_xtrain_sc.rds")
+saveRDS(object = x_test_sc, "MLP/cs50x_xtest_sc.rds")
 saveRDS(object = y_train, "MLP/cs50x_ytrain.rds")
 saveRDS(object = y_test, "MLP/cs50x_ytest.rds")
 
