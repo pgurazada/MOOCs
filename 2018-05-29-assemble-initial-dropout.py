@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[2]:
+# In[1]:
 
 
 import pandas as pd
@@ -11,47 +11,30 @@ import numpy as np
 # In[3]:
 
 
-import matplotlib.pyplot as plt 
-import seaborn as sns
-
-sns.set_style('ticks')
-plt.grid(False)
+mooc_df = pd.read_csv('data/HMXPC13_DI_v2_5-14-14.csv')
 
 
 # In[4]:
 
 
-mooc_df = pd.read_csv('data/HMXPC13_DI_v2_5-14-14.csv')
+mooc_df.columns
 
 
 # In[5]:
 
 
-mooc_df.columns
+mooc_df.shape
 
 
 # In[6]:
 
 
-mooc_df.shape
-
-
-# In[7]:
-
-
 mooc_df.isnull().sum()
-
-
-# In[ ]:
-
-
-course = mooc_df['course_id'] == 'HarvardX/CB22x/2013_Spring'
-cb22x_df = mooc_df[course]
 
 
 # This workbook is concerned with assembling data to analyze initial dropout. So, we define a set of global variables
 
-# In[14]:
+# In[7]:
 
 
 VARS_FOR_ANALYSIS = ['registered', 'viewed', 'explored', 'certified', 'gender', 'LoE_DI',                      'YoB', 'final_cc_cname_DI', 'start_time_DI']
@@ -74,27 +57,15 @@ COURSE_START_DATES = {'HarvardX/CS50x/2012' : pd.to_datetime('2012-10-15'),
                       'MITx/8.MReV/2013_Summer' : pd.to_datetime('2013-06-01')}
 
 
-# In[15]:
+# In[8]:
 
 
 len(mooc_df.course_id.unique()) == len(COURSE_START_DATES.keys())
 
 
-# In[ ]:
+# Now, we define several helper functions to munge the data into required shape. These functions are called by a master-function that iterates over the list of courses, beats it into the required shape and writes it into a feather file.
 
-
-cb22x_df = cb22x_df[VARS_FOR_ANALYSIS]
-
-
-# In[ ]:
-
-
-cb22x_df.columns
-
-
-# Now, we define several helper functions to munge the data into required shape
-
-# In[ ]:
+# In[9]:
 
 
 def bin_engaged(row):
@@ -104,7 +75,7 @@ def bin_engaged(row):
         return 0
 
 
-# In[ ]:
+# In[10]:
 
 
 def joined_early_by(join_date_offset):
@@ -114,7 +85,7 @@ def joined_early_by(join_date_offset):
         return 0
 
 
-# In[ ]:
+# In[11]:
 
 
 def joined_late_by(join_date_offset):
@@ -124,7 +95,7 @@ def joined_late_by(join_date_offset):
         return 0
 
 
-# In[ ]:
+# In[12]:
 
 
 def bin_country(country_name):
@@ -140,7 +111,7 @@ def bin_country(country_name):
         return 'OT'
 
 
-# In[ ]:
+# In[13]:
 
 
 def bin_education(LoE_DI):
@@ -156,49 +127,42 @@ def bin_education(LoE_DI):
         return 'DO'
 
 
-# In[ ]:
+# In[28]:
 
 
-cb22x_df['join_date_offset'] = cb22x_df.start_time_DI.apply(pd.to_datetime) -                                COURSE_START_DATES['HarvardX/CB22x/2013_Spring']
+def assemble_course_data(mooc_df):
+    for id in mooc_df.course_id.unique():
+        course = mooc_df['course_id'] == id
+        course_df = mooc_df[course]
+        
+        course_df = course_df[VARS_FOR_ANALYSIS]
+        
+        print('Munging {}...'.format(id))
+        
+        course_df['join_date_offset'] = course_df.start_time_DI.apply(pd.to_datetime) -                                         COURSE_START_DATES[id]
+            
+        course_df = course_df.assign(engaged = course_df.apply(bin_engaged, axis=1),
+                                     joined_early_by = course_df.join_date_offset.apply(joined_early_by),
+                                     joined_late_by = course_df.join_date_offset.apply(joined_late_by),
+                                     age = course_df.YoB.apply(lambda x: 2013 - x),
+                                     country = course_df.final_cc_cname_DI.apply(bin_country),
+                                     education = course_df.LoE_DI.apply(bin_education))
+        
+        course_df.drop(['registered', 'viewed', 'explored', 'certified', 'LoE_DI', 'YoB',                         'final_cc_cname_DI', 'start_time_DI', 'join_date_offset'], 
+                       axis=1,
+                       inplace=True)
+        
+        course_df_final = pd.get_dummies(course_df, dummy_na=True)
+        
+        print('Writing {} to file...'.format(id))
+        
+        course_name = id.split('/')
+        
+        course_df_final.reset_index().to_feather('processed/{}.feather'.format(''.join(course_name)))
 
 
-# In[ ]:
+# In[29]:
 
 
-cb22x_df = cb22x_df.assign(engaged = cb22x_df.apply(bin_engaged, axis=1),
-                           joined_early_by = cb22x_df.join_date_offset.apply(joined_early_by),
-                           joined_late_by = cb22x_df.join_date_offset.apply(joined_late_by),
-                           age = cb22x_df.YoB.apply(lambda x: 2013 - x),
-                           country = cb22x_df.final_cc_cname_DI.apply(bin_country),
-                           education = cb22x_df.LoE_DI.apply(bin_education))
-
-
-# In[ ]:
-
-
-cb22x_df = cb22x_df.drop(['registered', 'viewed', 'explored', 'certified', 'LoE_DI', 'YoB',                           'final_cc_cname_DI', 'start_time_DI', 'join_date_offset'], axis=1)
-
-
-# In[ ]:
-
-
-cb22x_df.head()
-
-
-# In[ ]:
-
-
-cb22x_df.info()
-
-
-# In[ ]:
-
-
-cb22x_df_final = pd.get_dummies(cb22x_df, dummy_na=True)
-
-
-# In[ ]:
-
-
-cb22x_df_final.info()
+assemble_course_data(mooc_df)
 
