@@ -75,7 +75,7 @@ sns.set_palette('gray')
 
 from keras.models import Sequential, load_model
 
-from keras.layers import Dense, Activation, Dropout
+from keras.layers import Dense, Activation, Dropout, BatchNormalization
 
 from keras.losses import binary_crossentropy
 
@@ -102,7 +102,6 @@ def build(network_type=Sequential,
           nb_initial_layer=64,
           dense_layer_lst=[64],
           nb_final_layer=1,
-          dpt_rate=0.2,
           learning_rate=1e-4):
     
     model = network_type()
@@ -110,12 +109,12 @@ def build(network_type=Sequential,
     model.add(Dense(nb_initial_layer, input_shape=(features_train.shape[1], )))
     model.add(Activation('relu'))
     
-    model.add(Dropout(dpt_rate))
+    model.add(BatchNormalization())
     
     for nb_units in dense_layer_lst:
         model.add(Dense(nb_units))
         model.add(Activation('relu'))
-        model.add(Dropout(dpt_rate))
+        model.add(BatchNormalization())
         
     model.add(Dense(nb_final_layer))
     model.add(Activation('sigmoid'))
@@ -235,20 +234,20 @@ features_train.shape, features_validation.shape
 labels_train.shape, labels_validation.shape
 
 
-# In[24]:
+# In[29]:
 
 
 K.clear_session()
 
 
-# In[25]:
+# In[30]:
 
 
-model = build(nb_initial_layer=32, dense_layer_lst=[32, 32, 32], dpt_rate=0.2, learning_rate=1e-3)
+model = build(nb_initial_layer=32, dense_layer_lst=[32, 32, 32], learning_rate=1e-4)
 model.summary()
 
 
-# In[27]:
+# In[31]:
 
 
 # We wish to save multiple best models.
@@ -256,10 +255,10 @@ model.summary()
 # get to the best model
 # This strategy would be useful if we are going to use an ensemble
 
-out_file_path='best-keras-runs/' +                COURSE_LIST[course_idx] +               '-{epoch:02d}-{val_binary_accuracy:.2f}.hdf5'
+out_file_path='best-keras-runs/' +                COURSE_LIST[course_idx] +               '-2-{epoch:02d}-{val_binary_accuracy:.2f}.hdf5'
 
 
-# In[ ]:
+# In[32]:
 
 
 # In case you wish to save only the best model
@@ -268,7 +267,7 @@ out_file_path='best-keras-runs/' +                COURSE_LIST[course_idx] +     
 #              '-best-model.hdf5'
 
 
-# In[28]:
+# In[33]:
 
 
 model_output = model.fit(features_train, labels_train,
@@ -285,13 +284,13 @@ model_output = model.fit(features_train, labels_train,
                                                     save_weights_only=False)])
 
 
-# In[29]:
+# In[34]:
 
 
 plot_loss(model_output.history, COURSE_LIST[course_idx])
 
 
-# In[30]:
+# In[35]:
 
 
 plot_accuracy(model_output.history, COURSE_LIST[course_idx])
@@ -299,19 +298,19 @@ plot_accuracy(model_output.history, COURSE_LIST[course_idx])
 
 # ##### Load the best model and compute metrics
 
-# In[31]:
+# In[ ]:
 
 
 best_model = load_model('best-keras-runs/HarvardXCB22x2013_Spring-24-0.65.hdf5')
 
 
-# In[32]:
+# In[ ]:
 
 
 best_model.evaluate(features_train, labels_train, batch_size=128)
 
 
-# In[33]:
+# In[ ]:
 
 
 course_metrics['course_name'].append(COURSE_LIST[course_idx])
@@ -323,21 +322,21 @@ course_metrics['test_f1_score'].append(f1_score(best_model.predict_classes(featu
 
 # ### 2. CS50x - Introduction to Computer Science I
 
-# In[34]:
+# In[ ]:
 
 
 course_idx = 1
 print(COURSE_LIST[course_idx])
 
 
-# In[35]:
+# In[ ]:
 
 
 course_loc = DATA_DIR + COURSE_LIST[course_idx]
 print(course_loc)
 
 
-# In[36]:
+# In[ ]:
 
 
 features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
@@ -347,7 +346,7 @@ labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index
 labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
 
 
-# In[37]:
+# In[ ]:
 
 
 features_train = np.array(features_train)
@@ -357,19 +356,19 @@ labels_train = np.array(labels_train).ravel()
 labels_test = np.array(labels_test).ravel()
 
 
-# In[38]:
+# In[ ]:
 
 
 features_train.shape
 
 
-# In[39]:
+# In[ ]:
 
 
 labels_train.shape
 
 
-# In[40]:
+# In[ ]:
 
 
 features_train, features_validation, labels_train, labels_validation = train_test_split(features_train, labels_train, 
@@ -377,32 +376,32 @@ features_train, features_validation, labels_train, labels_validation = train_tes
                                                                                         random_state=20130810)
 
 
-# In[41]:
+# In[ ]:
 
 
 features_train.shape, features_validation.shape
 
 
-# In[42]:
+# In[ ]:
 
 
 labels_train.shape, labels_validation.shape
 
 
-# In[43]:
+# In[ ]:
 
 
 K.clear_session()
 
 
-# In[44]:
+# In[ ]:
 
 
 model = build(nb_initial_layer=32, dense_layer_lst=[32, 32, 32], dpt_rate=0.1, learning_rate=1e-4)
 model.summary()
 
 
-# In[45]:
+# In[ ]:
 
 
 # We wish to save multiple best models.
@@ -419,7 +418,7 @@ out_file_path='best-keras-runs/' +                COURSE_LIST[course_idx] +     
 #              '-best-model.hdf5'
 
 
-# In[46]:
+# In[ ]:
 
 
 model_output = model.fit(features_train, labels_train,
@@ -436,13 +435,13 @@ model_output = model.fit(features_train, labels_train,
                                                     save_weights_only=False)])
 
 
-# In[47]:
+# In[ ]:
 
 
 plot_loss(model_output.history, COURSE_LIST[course_idx])
 
 
-# In[48]:
+# In[ ]:
 
 
 plot_accuracy(model_output.history, COURSE_LIST[course_idx])
@@ -450,19 +449,19 @@ plot_accuracy(model_output.history, COURSE_LIST[course_idx])
 
 # ##### Load the best model and compute metrics
 
-# In[49]:
+# In[ ]:
 
 
 best_model = load_model('best-keras-runs/HarvardXCS50x2012-33-0.68.hdf5')
 
 
-# In[50]:
+# In[ ]:
 
 
 best_model.evaluate(features_train, labels_train, batch_size=128)
 
 
-# In[51]:
+# In[ ]:
 
 
 course_metrics['course_name'].append(COURSE_LIST[course_idx])
@@ -474,21 +473,21 @@ course_metrics['test_f1_score'].append(f1_score(best_model.predict_classes(featu
 
 # ### 3. ER22x - Justice
 
-# In[52]:
+# In[ ]:
 
 
 course_idx = 2
 print(COURSE_LIST[course_idx])
 
 
-# In[53]:
+# In[ ]:
 
 
 course_loc = DATA_DIR + COURSE_LIST[course_idx]
 print(course_loc)
 
 
-# In[54]:
+# In[ ]:
 
 
 features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
@@ -498,7 +497,7 @@ labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index
 labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
 
 
-# In[55]:
+# In[ ]:
 
 
 features_train = np.array(features_train)
@@ -508,19 +507,19 @@ labels_train = np.array(labels_train).ravel()
 labels_test = np.array(labels_test).ravel()
 
 
-# In[56]:
+# In[ ]:
 
 
 features_train.shape
 
 
-# In[57]:
+# In[ ]:
 
 
 labels_train.shape
 
 
-# In[58]:
+# In[ ]:
 
 
 features_train, features_validation, labels_train, labels_validation = train_test_split(features_train, labels_train, 
@@ -528,32 +527,32 @@ features_train, features_validation, labels_train, labels_validation = train_tes
                                                                                         random_state=20130810)
 
 
-# In[59]:
+# In[ ]:
 
 
 features_train.shape, features_validation.shape
 
 
-# In[60]:
+# In[ ]:
 
 
 labels_train.shape, labels_validation.shape
 
 
-# In[71]:
+# In[ ]:
 
 
 K.clear_session()
 
 
-# In[72]:
+# In[ ]:
 
 
 model = build(nb_initial_layer=32, dense_layer_lst=[32, 32, 32], dpt_rate=0.1, learning_rate=1e-5)
 model.summary()
 
 
-# In[69]:
+# In[ ]:
 
 
 # We wish to save multiple best models.
@@ -570,7 +569,7 @@ out_file_path='best-keras-runs/' +                COURSE_LIST[course_idx] +     
 #              '-best-model.hdf5'
 
 
-# In[73]:
+# In[ ]:
 
 
 model_output = model.fit(features_train, labels_train,
@@ -587,13 +586,13 @@ model_output = model.fit(features_train, labels_train,
                                                     save_weights_only=False)])
 
 
-# In[74]:
+# In[ ]:
 
 
 plot_loss(model_output.history, COURSE_LIST[course_idx])
 
 
-# In[75]:
+# In[ ]:
 
 
 plot_accuracy(model_output.history, COURSE_LIST[course_idx])
@@ -601,19 +600,19 @@ plot_accuracy(model_output.history, COURSE_LIST[course_idx])
 
 # ##### Load the best model and compute metrics
 
-# In[76]:
+# In[ ]:
 
 
 best_model = load_model('best-keras-runs/HarvardXER22x2013_Spring-18-0.67.hdf5')
 
 
-# In[77]:
+# In[ ]:
 
 
 best_model.evaluate(features_train, labels_train, batch_size=128)
 
 
-# In[78]:
+# In[ ]:
 
 
 course_metrics['course_name'].append(COURSE_LIST[course_idx])
@@ -625,21 +624,21 @@ course_metrics['test_f1_score'].append(f1_score(best_model.predict_classes(featu
 
 # ### 4. PH207x - Health in Numbers: Quantitative Methods in Clinical & Public Health Research
 
-# In[79]:
+# In[ ]:
 
 
 course_idx = 3
 print(COURSE_LIST[course_idx])
 
 
-# In[80]:
+# In[ ]:
 
 
 course_loc = DATA_DIR + COURSE_LIST[course_idx]
 print(course_loc)
 
 
-# In[81]:
+# In[ ]:
 
 
 features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
@@ -649,7 +648,7 @@ labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index
 labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
 
 
-# In[82]:
+# In[ ]:
 
 
 features_train = np.array(features_train)
@@ -659,19 +658,19 @@ labels_train = np.array(labels_train).ravel()
 labels_test = np.array(labels_test).ravel()
 
 
-# In[83]:
+# In[ ]:
 
 
 features_train.shape
 
 
-# In[84]:
+# In[ ]:
 
 
 labels_train.shape
 
 
-# In[85]:
+# In[ ]:
 
 
 features_train, features_validation, labels_train, labels_validation = train_test_split(features_train, labels_train, 
@@ -679,32 +678,32 @@ features_train, features_validation, labels_train, labels_validation = train_tes
                                                                                         random_state=20130810)
 
 
-# In[86]:
+# In[ ]:
 
 
 features_train.shape, features_validation.shape
 
 
-# In[87]:
+# In[ ]:
 
 
 labels_train.shape, labels_validation.shape
 
 
-# In[132]:
+# In[ ]:
 
 
 K.clear_session()
 
 
-# In[133]:
+# In[ ]:
 
 
 model = build(nb_initial_layer=32, dense_layer_lst=[32, 32, 32], dpt_rate=0.01, learning_rate=1e-4)
 model.summary()
 
 
-# In[135]:
+# In[ ]:
 
 
 # We wish to save multiple best models.
@@ -713,7 +712,7 @@ model.summary()
 out_file_path='best-keras-runs/' +                COURSE_LIST[course_idx] +               '-8-{epoch:02d}-{val_binary_accuracy:.2f}.hdf5'
 
 
-# In[130]:
+# In[ ]:
 
 
 #out_file_path='best-keras-runs/' + \
@@ -721,7 +720,7 @@ out_file_path='best-keras-runs/' +                COURSE_LIST[course_idx] +     
 #              '-best-model.hdf5'
 
 
-# In[136]:
+# In[ ]:
 
 
 model_output = model.fit(features_train, labels_train,
@@ -738,13 +737,13 @@ model_output = model.fit(features_train, labels_train,
                                                     save_weights_only=False)])
 
 
-# In[137]:
+# In[ ]:
 
 
 plot_loss(model_output.history, COURSE_LIST[course_idx])
 
 
-# In[138]:
+# In[ ]:
 
 
 plot_accuracy(model_output.history, COURSE_LIST[course_idx])
@@ -752,19 +751,19 @@ plot_accuracy(model_output.history, COURSE_LIST[course_idx])
 
 # ##### Load the best model and compute metrics
 
-# In[139]:
+# In[ ]:
 
 
 best_model = load_model('best-keras-runs/HarvardXPH207x2012_Fall-14-0.65.hdf5')
 
 
-# In[140]:
+# In[ ]:
 
 
 best_model.evaluate(features_train, labels_train, batch_size=128)
 
 
-# In[141]:
+# In[ ]:
 
 
 course_metrics['course_name'].append(COURSE_LIST[course_idx])
@@ -776,21 +775,21 @@ course_metrics['test_f1_score'].append(f1_score(best_model.predict_classes(featu
 
 # ### 5. PH278x - Human Health and Global Environmental Change
 
-# In[142]:
+# In[ ]:
 
 
 course_idx = 4
 print(COURSE_LIST[course_idx])
 
 
-# In[143]:
+# In[ ]:
 
 
 course_loc = DATA_DIR + COURSE_LIST[course_idx]
 print(course_loc)
 
 
-# In[144]:
+# In[ ]:
 
 
 features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
@@ -800,7 +799,7 @@ labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index
 labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
 
 
-# In[145]:
+# In[ ]:
 
 
 features_train = np.array(features_train)
@@ -810,19 +809,19 @@ labels_train = np.array(labels_train).ravel()
 labels_test = np.array(labels_test).ravel()
 
 
-# In[146]:
+# In[ ]:
 
 
 features_train.shape
 
 
-# In[147]:
+# In[ ]:
 
 
 labels_train.shape
 
 
-# In[148]:
+# In[ ]:
 
 
 features_train, features_validation, labels_train, labels_validation = train_test_split(features_train, labels_train, 
@@ -830,32 +829,32 @@ features_train, features_validation, labels_train, labels_validation = train_tes
                                                                                         random_state=20130810)
 
 
-# In[149]:
+# In[ ]:
 
 
 features_train.shape, features_validation.shape
 
 
-# In[150]:
+# In[ ]:
 
 
 labels_train.shape, labels_validation.shape
 
 
-# In[180]:
+# In[ ]:
 
 
 K.clear_session()
 
 
-# In[181]:
+# In[ ]:
 
 
 model = build(nb_initial_layer=32, dense_layer_lst=[32, 32, 32], dpt_rate=0.2, learning_rate=1e-4)
 model.summary()
 
 
-# In[182]:
+# In[ ]:
 
 
 # We wish to save multiple best models.
@@ -864,7 +863,7 @@ model.summary()
 out_file_path='best-keras-runs/' +                COURSE_LIST[course_idx] +               '-6-{epoch:02d}-{val_binary_accuracy:.2f}.hdf5'
 
 
-# In[130]:
+# In[ ]:
 
 
 #out_file_path='best-keras-runs/' + \
@@ -872,7 +871,7 @@ out_file_path='best-keras-runs/' +                COURSE_LIST[course_idx] +     
 #              '-best-model.hdf5'
 
 
-# In[183]:
+# In[ ]:
 
 
 model_output = model.fit(features_train, labels_train,
@@ -889,13 +888,13 @@ model_output = model.fit(features_train, labels_train,
                                                     save_weights_only=False)])
 
 
-# In[184]:
+# In[ ]:
 
 
 plot_loss(model_output.history, COURSE_LIST[course_idx])
 
 
-# In[185]:
+# In[ ]:
 
 
 plot_accuracy(model_output.history, COURSE_LIST[course_idx])
@@ -903,19 +902,19 @@ plot_accuracy(model_output.history, COURSE_LIST[course_idx])
 
 # ##### Load the best model and compute metrics
 
-# In[186]:
+# In[ ]:
 
 
 best_model = load_model('best-keras-runs/HarvardXPH278x2013_Spring-4-07-0.72.hdf5')
 
 
-# In[187]:
+# In[ ]:
 
 
 best_model.evaluate(features_train, labels_train, batch_size=128)
 
 
-# In[197]:
+# In[ ]:
 
 
 course_metrics['course_name'].append(COURSE_LIST[course_idx])
@@ -927,21 +926,21 @@ course_metrics['test_f1_score'].append(f1_score(best_model.predict_classes(featu
 
 # ### 6. MIT 14.73x - The Challenges of Global Poverty 
 
-# In[198]:
+# In[ ]:
 
 
 course_idx = 5
 print(COURSE_LIST[course_idx])
 
 
-# In[199]:
+# In[ ]:
 
 
 course_loc = DATA_DIR + COURSE_LIST[course_idx]
 print(course_loc)
 
 
-# In[200]:
+# In[ ]:
 
 
 features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
@@ -951,7 +950,7 @@ labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index
 labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
 
 
-# In[201]:
+# In[ ]:
 
 
 features_train = np.array(features_train)
@@ -961,19 +960,19 @@ labels_train = np.array(labels_train).ravel()
 labels_test = np.array(labels_test).ravel()
 
 
-# In[202]:
+# In[ ]:
 
 
 features_train.shape
 
 
-# In[203]:
+# In[ ]:
 
 
 labels_train.shape
 
 
-# In[204]:
+# In[ ]:
 
 
 features_train, features_validation, labels_train, labels_validation = train_test_split(features_train, labels_train, 
@@ -981,32 +980,32 @@ features_train, features_validation, labels_train, labels_validation = train_tes
                                                                                         random_state=20130810)
 
 
-# In[205]:
+# In[ ]:
 
 
 features_train.shape, features_validation.shape
 
 
-# In[206]:
+# In[ ]:
 
 
 labels_train.shape, labels_validation.shape
 
 
-# In[246]:
+# In[ ]:
 
 
 K.clear_session()
 
 
-# In[247]:
+# In[ ]:
 
 
 model = build(nb_initial_layer=64, dense_layer_lst=[32, 32, 32], dpt_rate=0.05, learning_rate=1e-4)
 model.summary()
 
 
-# In[248]:
+# In[ ]:
 
 
 # We wish to save multiple best models.
@@ -1015,7 +1014,7 @@ model.summary()
 out_file_path='best-keras-runs/' +                COURSE_LIST[course_idx] +               '-8-{epoch:02d}-{val_binary_accuracy:.2f}.hdf5'
 
 
-# In[130]:
+# In[ ]:
 
 
 #out_file_path='best-keras-runs/' + \
@@ -1023,7 +1022,7 @@ out_file_path='best-keras-runs/' +                COURSE_LIST[course_idx] +     
 #              '-best-model.hdf5'
 
 
-# In[249]:
+# In[ ]:
 
 
 model_output = model.fit(features_train, labels_train,
@@ -1040,13 +1039,13 @@ model_output = model.fit(features_train, labels_train,
                                                     save_weights_only=False)])
 
 
-# In[250]:
+# In[ ]:
 
 
 plot_loss(model_output.history, COURSE_LIST[course_idx])
 
 
-# In[251]:
+# In[ ]:
 
 
 plot_accuracy(model_output.history, COURSE_LIST[course_idx])
@@ -1054,19 +1053,19 @@ plot_accuracy(model_output.history, COURSE_LIST[course_idx])
 
 # ##### Load the best model and compute metrics
 
-# In[252]:
+# In[ ]:
 
 
 best_model = load_model('best-keras-runs/MITx14.73x2013_Spring-8-37-0.63.hdf5')
 
 
-# In[258]:
+# In[ ]:
 
 
 best_model.evaluate(features_validation, labels_validation, batch_size=64)
 
 
-# In[259]:
+# In[ ]:
 
 
 course_metrics['course_name'].append(COURSE_LIST[course_idx])
@@ -1078,21 +1077,21 @@ course_metrics['test_f1_score'].append(f1_score(best_model.predict_classes(featu
 
 # ### 7. MIT 2.01x - Elements of Structures
 
-# In[301]:
+# In[ ]:
 
 
 course_idx = 6
 print(COURSE_LIST[course_idx])
 
 
-# In[302]:
+# In[ ]:
 
 
 course_loc = DATA_DIR + COURSE_LIST[course_idx]
 print(course_loc)
 
 
-# In[303]:
+# In[ ]:
 
 
 features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
@@ -1102,7 +1101,7 @@ labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index
 labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
 
 
-# In[304]:
+# In[ ]:
 
 
 features_train = np.array(features_train)
@@ -1112,19 +1111,19 @@ labels_train = np.array(labels_train).ravel()
 labels_test = np.array(labels_test).ravel()
 
 
-# In[305]:
+# In[ ]:
 
 
 features_train.shape
 
 
-# In[306]:
+# In[ ]:
 
 
 labels_train.shape
 
 
-# In[307]:
+# In[ ]:
 
 
 features_train, features_validation, labels_train, labels_validation = train_test_split(features_train, labels_train, 
@@ -1132,32 +1131,32 @@ features_train, features_validation, labels_train, labels_validation = train_tes
                                                                                         random_state=20130810)
 
 
-# In[308]:
+# In[ ]:
 
 
 features_train.shape, features_validation.shape
 
 
-# In[309]:
+# In[ ]:
 
 
 labels_train.shape, labels_validation.shape
 
 
-# In[337]:
+# In[ ]:
 
 
 K.clear_session()
 
 
-# In[338]:
+# In[ ]:
 
 
 model = build(nb_initial_layer=64, dense_layer_lst=[32, 32, 32], dpt_rate=0.05, learning_rate=1e-5)
 model.summary()
 
 
-# In[339]:
+# In[ ]:
 
 
 # We wish to save multiple best models.
@@ -1166,7 +1165,7 @@ model.summary()
 out_file_path='best-keras-runs/' +                COURSE_LIST[course_idx] +               '-11-{epoch:02d}-{val_binary_accuracy:.2f}.hdf5'
 
 
-# In[130]:
+# In[ ]:
 
 
 #out_file_path='best-keras-runs/' + \
@@ -1174,7 +1173,7 @@ out_file_path='best-keras-runs/' +                COURSE_LIST[course_idx] +     
 #              '-best-model.hdf5'
 
 
-# In[340]:
+# In[ ]:
 
 
 model_output = model.fit(features_train, labels_train,
@@ -1191,13 +1190,13 @@ model_output = model.fit(features_train, labels_train,
                                                     save_weights_only=False)])
 
 
-# In[341]:
+# In[ ]:
 
 
 plot_loss(model_output.history, COURSE_LIST[course_idx])
 
 
-# In[342]:
+# In[ ]:
 
 
 plot_accuracy(model_output.history, COURSE_LIST[course_idx])
@@ -1205,19 +1204,19 @@ plot_accuracy(model_output.history, COURSE_LIST[course_idx])
 
 # ##### Load the best model and compute metrics
 
-# In[343]:
+# In[ ]:
 
 
 best_model = load_model('best-keras-runs/MITx2.01x2013_Spring-11-26-0.66.hdf5')
 
 
-# In[344]:
+# In[ ]:
 
 
 best_model.evaluate(features_train, labels_train, batch_size=128)
 
 
-# In[345]:
+# In[ ]:
 
 
 course_metrics['course_name'].append(COURSE_LIST[course_idx])
@@ -1229,21 +1228,21 @@ course_metrics['test_f1_score'].append(f1_score(best_model.predict_classes(featu
 
 # ### 8. MIT 3.091x (Fall) - Introduction to Solid State Chemistry
 
-# In[346]:
+# In[ ]:
 
 
 course_idx = 7
 print(COURSE_LIST[course_idx])
 
 
-# In[347]:
+# In[ ]:
 
 
 course_loc = DATA_DIR + COURSE_LIST[course_idx]
 print(course_loc)
 
 
-# In[348]:
+# In[ ]:
 
 
 features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
@@ -1253,7 +1252,7 @@ labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index
 labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
 
 
-# In[349]:
+# In[ ]:
 
 
 features_train = np.array(features_train)
@@ -1263,19 +1262,19 @@ labels_train = np.array(labels_train).ravel()
 labels_test = np.array(labels_test).ravel()
 
 
-# In[350]:
+# In[ ]:
 
 
 features_train.shape
 
 
-# In[351]:
+# In[ ]:
 
 
 labels_train.shape
 
 
-# In[352]:
+# In[ ]:
 
 
 features_train, features_validation, labels_train, labels_validation = train_test_split(features_train, labels_train, 
@@ -1283,32 +1282,32 @@ features_train, features_validation, labels_train, labels_validation = train_tes
                                                                                         random_state=20130810)
 
 
-# In[353]:
+# In[ ]:
 
 
 features_train.shape, features_validation.shape
 
 
-# In[354]:
+# In[ ]:
 
 
 labels_train.shape, labels_validation.shape
 
 
-# In[382]:
+# In[ ]:
 
 
 K.clear_session()
 
 
-# In[383]:
+# In[ ]:
 
 
 model = build(nb_initial_layer=64, dense_layer_lst=[32, 32, 32], dpt_rate=0.01, learning_rate=1e-5)
 model.summary()
 
 
-# In[384]:
+# In[ ]:
 
 
 # We wish to save multiple best models.
@@ -1317,7 +1316,7 @@ model.summary()
 out_file_path='best-keras-runs/' +                COURSE_LIST[course_idx] +               '-6-{epoch:02d}-{val_binary_accuracy:.2f}.hdf5'
 
 
-# In[130]:
+# In[ ]:
 
 
 #out_file_path='best-keras-runs/' + \
@@ -1325,7 +1324,7 @@ out_file_path='best-keras-runs/' +                COURSE_LIST[course_idx] +     
 #              '-best-model.hdf5'
 
 
-# In[385]:
+# In[ ]:
 
 
 model_output = model.fit(features_train, labels_train,
@@ -1342,13 +1341,13 @@ model_output = model.fit(features_train, labels_train,
                                                     save_weights_only=False)])
 
 
-# In[386]:
+# In[ ]:
 
 
 plot_loss(model_output.history, COURSE_LIST[course_idx])
 
 
-# In[387]:
+# In[ ]:
 
 
 plot_accuracy(model_output.history, COURSE_LIST[course_idx])
@@ -1356,19 +1355,19 @@ plot_accuracy(model_output.history, COURSE_LIST[course_idx])
 
 # ##### Load the best model and compute metrics
 
-# In[343]:
+# In[ ]:
 
 
 best_model = load_model('best-keras-runs/MITx2.01x2013_Spring-11-26-0.66.hdf5')
 
 
-# In[344]:
+# In[ ]:
 
 
 best_model.evaluate(features_train, labels_train, batch_size=128)
 
 
-# In[345]:
+# In[ ]:
 
 
 course_metrics['course_name'].append(COURSE_LIST[course_idx])
