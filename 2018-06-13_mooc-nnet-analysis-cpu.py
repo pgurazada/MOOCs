@@ -1,12 +1,15 @@
 
 # coding: utf-8
 
+# ## Set global variables
+
 # In[ ]:
 
 
 course_metrics = {'course_name' : [],
                   'val_binary_accuracy' : [],
-                  'test_f1_score' : []}
+                  'test_accuracy' : [],
+                  'test_f1_score' : [] }
 
 
 # In[ ]:
@@ -19,13 +22,13 @@ import os
 
 
 CONSOLIDATED_DATA_DIR = 'processed/'
-COURSE_DIR_LIST = [d[0][10:] for d in os.walk(CONSOLIDATED_DATA_DIR)][1:]
+COURSE_LIST = [d[0][10:] for d in os.walk(CONSOLIDATED_DATA_DIR)][1:]
 
 
 # In[ ]:
 
 
-COURSE_DIR_LIST
+COURSE_LIST
 
 
 # In[ ]:
@@ -34,13 +37,37 @@ COURSE_DIR_LIST
 DATA_DIR = 'processed-final/'
 
 
-# ### Design the feed-forward neural net
+# ## Design the feed-forward neural net
 
 # In[ ]:
 
 
 import pandas as pd
 import numpy as np
+import tensorflow as tf
+
+
+# In[ ]:
+
+
+np.random.seed(20130810)
+tf.set_random_seed(20130810)
+
+
+# In[ ]:
+
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+# In[ ]:
+
+
+get_ipython().magic('matplotlib inline')
+sns.set_style('ticks', {'grid_color' : '0.9'})
+sns.set_context('talk', font_scale=1.2)
+sns.set_palette('gray')
 
 
 # In[ ]:
@@ -64,7 +91,7 @@ from keras import backend as K
 # In[ ]:
 
 
-from sklearn.metrics import f1_score
+from sklearn.metrics import accuracy_score, f1_score
 
 
 # In[ ]:
@@ -99,22 +126,70 @@ def build(network_type=Sequential,
     return model
 
 
+# In[ ]:
+
+
+def plot_loss(fit_history, course_name):
+    epochs = range(1, len(fit_history['binary_accuracy'])+1)
+    
+    plt.figure(figsize=(12, 6))
+    
+    plt.plot(epochs, fit_history['loss'], '--', label='Training loss')
+    plt.plot(epochs, fit_history['val_loss'], '-', label='Validation loss')
+    
+    plt.title('Training and Validation loss for ' + course_name)
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    
+    plt.show()
+
+
+# In[ ]:
+
+
+def plot_accuracy(fit_history, course_name):
+    epochs = range(1, len(fit_history['binary_accuracy'])+1)
+    
+    plt.figure(figsize=(12, 6))
+    
+    plt.plot(epochs, fit_history['binary_accuracy'], '--', label='Training Accuracy')
+    plt.plot(epochs, fit_history['val_binary_accuracy'], '-', label='Validation Accuracy')
+    
+    plt.title('Training and Validation accuracy for ' + course_name)
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    
+    plt.show()
+
+
+# ## Tune the network for each course
+
 # ### 1. CB22x - Ancient Greek Hero
 
 # In[ ]:
 
 
-cb22x_features_train = pd.read_feather('processed-final/HarvardXCB22x2013_Spring_features_train.feather')
-cb22x_features_test = pd.read_feather('processed-final/HarvardXCB22x2013_Spring_features_test.feather')
-cb22x_labels_train = pd.read_feather('processed-final/HarvardXCB22x2013_Spring_labels_train.feather')
-cb22x_labels_test = pd.read_feather('processed-final/HarvardXCB22x2013_Spring_labels_test.feather')
+course_idx = 0
+print(COURSE_LIST[course_idx])
 
 
 # In[ ]:
 
 
-features_train, features_test = cb22x_features_train.drop('index', axis=1), cb22x_features_test.drop('index', axis=1)
-labels_train, labels_test = cb22x_labels_train.drop('index', axis=1), cb22x_labels_test.drop('index', axis=1)
+course_loc = DATA_DIR + COURSE_LIST[course_idx]
+print(course_loc)
+
+
+# In[ ]:
+
+
+features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
+features_test = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
+
+labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
+labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
 
 
 # In[ ]:
@@ -157,7 +232,7 @@ model.summary()
 
 model_output = model.fit(features_train, labels_train,
                          batch_size=128,
-                         epochs=20,
+                         epochs=50,
                          validation_split=0.2,
                          callbacks=[EarlyStopping(patience=4), 
                                     ReduceLROnPlateau(patience=4, min_lr=1e-6)])
@@ -166,8 +241,21 @@ model_output = model.fit(features_train, labels_train,
 # In[ ]:
 
 
-course_metrics['course_name'].append('HarvardCB22x_2013_Spring')
+plot_loss(model_output.history, COURSE_LIST[course_idx])
+
+
+# In[ ]:
+
+
+plot_accuracy(model_output.history, COURSE_LIST[course_idx])
+
+
+# In[ ]:
+
+
+course_metrics['course_name'].append(COURSE_LIST[course_idx])
 course_metrics['val_binary_accuracy'].append(model_output.history['val_binary_accuracy'][-1])
+course_metrics['test_accuracy'].append(accuracy_score(model.predict_classes(features_test), labels_test))
 course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_test), labels_test))
 
 
@@ -176,17 +264,29 @@ course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_t
 # In[ ]:
 
 
-cs50x_features_train = pd.read_feather('processed-final/HarvardXCS50x2012_features_train.feather')
-cs50x_features_test = pd.read_feather('processed-final//HarvardXCS50x2012_features_test.feather')
-cs50x_labels_train = pd.read_feather('processed-final//HarvardXCS50x2012_labels_train.feather')
-cs50x_labels_test = pd.read_feather('processed-final//HarvardXCS50x2012_labels_test.feather')
+course_idx = 1
+print(COURSE_LIST[course_idx])
 
 
 # In[ ]:
 
 
-features_train, features_test = cs50x_features_train.drop('index', axis=1), cs50x_features_test.drop('index', axis=1)
-labels_train, labels_test = cs50x_labels_train.drop('index', axis=1), cs50x_labels_test.drop('index', axis=1)
+course_loc = DATA_DIR + COURSE_LIST[course_idx]
+print(course_loc)
+
+
+# In[ ]:
+
+
+features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
+features_test = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
+
+labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
+labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
+
+
+# In[ ]:
+
 
 features_train = np.array(features_train)
 features_test = np.array(features_test)
@@ -234,8 +334,9 @@ model_output = model.fit(features_train, labels_train,
 # In[ ]:
 
 
-course_metrics['course_name'].append('HarvardCB50x_2012')
+course_metrics['course_name'].append(COURSE_LIST[course_idx])
 course_metrics['val_binary_accuracy'].append(model_output.history['val_binary_accuracy'][-1])
+course_metrics['test_accuracy'].append(accuracy_score(model.predict_classes(features_test), labels_test))
 course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_test), labels_test))
 
 
@@ -244,17 +345,25 @@ course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_t
 # In[ ]:
 
 
-er22x_features_train = pd.read_feather('processed-final/HarvardXER22x2013_Spring_features_train.feather')
-er22x_features_test = pd.read_feather('processed-final/HarvardXER22x2013_Spring_features_test.feather')
-er22x_labels_train = pd.read_feather('processed-final/HarvardXER22x2013_Spring_labels_train.feather')
-er22x_labels_test = pd.read_feather('processed-final/HarvardXER22x2013_Spring_labels_test.feather')
+course_idx = 2
+print(COURSE_LIST[course_idx])
 
 
 # In[ ]:
 
 
-features_train, features_test = er22x_features_train.drop('index', axis=1), er22x_features_test.drop('index', axis=1)
-labels_train, labels_test = er22x_labels_train.drop('index', axis=1), er22x_labels_test.drop('index', axis=1)
+course_loc = DATA_DIR + COURSE_LIST[course_idx]
+print(course_loc)
+
+
+# In[ ]:
+
+
+features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
+features_test = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
+
+labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
+labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
 
 
 # In[ ]:
@@ -306,8 +415,9 @@ model_output = model.fit(features_train, labels_train,
 # In[ ]:
 
 
-course_metrics['course_name'].append('HarvardXER22x2013_Spring')
+course_metrics['course_name'].append(COURSE_LIST[course_idx])
 course_metrics['val_binary_accuracy'].append(model_output.history['val_binary_accuracy'][-1])
+course_metrics['test_accuracy'].append(accuracy_score(model.predict_classes(features_test), labels_test))
 course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_test), labels_test))
 
 
@@ -316,17 +426,25 @@ course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_t
 # In[ ]:
 
 
-ph207x_features_train = pd.read_feather('processed-final/HarvardXPH207x2012_Fall_features_train.feather')
-ph207x_features_test = pd.read_feather('processed-final/HarvardXPH207x2012_Fall_features_test.feather')
-ph207x_labels_train = pd.read_feather('processed-final/HarvardXPH207x2012_Fall_labels_train.feather')
-ph207x_labels_test = pd.read_feather('processed-final/HarvardXPH207x2012_Fall_labels_test.feather')
+course_idx = 3
+print(COURSE_LIST[course_idx])
 
 
 # In[ ]:
 
 
-features_train, features_test = ph207x_features_train.drop('index', axis=1), ph207x_features_test.drop('index', axis=1)
-labels_train, labels_test = ph207x_labels_train.drop('index', axis=1), ph207x_labels_test.drop('index', axis=1)
+course_loc = DATA_DIR + COURSE_LIST[course_idx]
+print(course_loc)
+
+
+# In[ ]:
+
+
+features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
+features_test = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
+
+labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
+labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
 
 
 # In[ ]:
@@ -378,8 +496,9 @@ model_output = model.fit(features_train, labels_train,
 # In[ ]:
 
 
-course_metrics['course_name'].append('HarvardXER22x2013_Spring')
+course_metrics['course_name'].append(COURSE_LIST[course_idx])
 course_metrics['val_binary_accuracy'].append(model_output.history['val_binary_accuracy'][-1])
+course_metrics['test_accuracy'].append(accuracy_score(model.predict_classes(features_test), labels_test))
 course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_test), labels_test))
 
 
@@ -388,35 +507,25 @@ course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_t
 # In[ ]:
 
 
-course_id = 4
+course_idx = 4
+print(COURSE_LIST[course_idx])
 
 
 # In[ ]:
 
 
-features_train = pd.read_feather(SPLIT_DATA_DIR + COURSE_DIR_LIST[course_id] + '_features_train.feather')
+course_loc = DATA_DIR + COURSE_LIST[course_idx]
+print(course_loc)
 
 
 # In[ ]:
 
 
-features_train.shape
+features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
+features_test = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
 
-
-# In[ ]:
-
-
-ph207x_features_train = pd.read_feather('processed-final/HarvardXPH207x2012_Fall_features_train.feather')
-ph207x_features_test = pd.read_feather('processed-final/HarvardXPH207x2012_Fall_features_test.feather')
-ph207x_labels_train = pd.read_feather('processed-final/HarvardXPH207x2012_Fall_labels_train.feather')
-ph207x_labels_test = pd.read_feather('processed-final/HarvardXPH207x2012_Fall_labels_test.feather')
-
-
-# In[ ]:
-
-
-features_train, features_test = ph207x_features_train.drop('index', axis=1), ph207x_features_test.drop('index', axis=1)
-labels_train, labels_test = ph207x_labels_train.drop('index', axis=1), ph207x_labels_test.drop('index', axis=1)
+labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
+labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
 
 
 # In[ ]:
@@ -439,4 +548,928 @@ features_train.shape
 
 
 labels_train.shape
+
+
+# In[ ]:
+
+
+K.clear_session()
+
+
+# In[ ]:
+
+
+model = build(nb_initial_layer=64, dense_layer_lst=[32, 32, 32], dpt_rate=0.05, learning_rate=1e-2)
+model.summary()
+
+
+# In[ ]:
+
+
+model_output = model.fit(features_train, labels_train,
+                         batch_size=128,
+                         epochs=50,
+                         validation_split=0.2,
+                         callbacks=[EarlyStopping(patience=4), 
+                                    ReduceLROnPlateau(patience=4, min_lr=1e-6)])
+
+
+# In[ ]:
+
+
+course_metrics['course_name'].append(COURSE_LIST[course_idx])
+course_metrics['val_binary_accuracy'].append(model_output.history['val_binary_accuracy'][-1])
+course_metrics['test_accuracy'].append(accuracy_score(model.predict_classes(features_test), labels_test))
+course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_test), labels_test))
+
+
+# ### 6. MIT 14.73x - The Challenges of Global Poverty 
+
+# In[ ]:
+
+
+course_idx = 5
+print(COURSE_LIST[course_idx])
+
+
+# In[ ]:
+
+
+course_loc = DATA_DIR + COURSE_LIST[course_idx]
+print(course_loc)
+
+
+# In[ ]:
+
+
+features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
+features_test = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
+
+labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
+labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
+
+
+# In[ ]:
+
+
+features_train = np.array(features_train)
+features_test = np.array(features_test)
+
+labels_train = np.array(labels_train).ravel()
+labels_test = np.array(labels_test).ravel()
+
+
+# In[ ]:
+
+
+features_train.shape
+
+
+# In[ ]:
+
+
+labels_train.shape
+
+
+# In[ ]:
+
+
+K.clear_session()
+
+
+# In[ ]:
+
+
+model = build(nb_initial_layer=64, dense_layer_lst=[32, 32, 32], dpt_rate=0.05, learning_rate=1e-2)
+model.summary()
+
+
+# In[ ]:
+
+
+model_output = model.fit(features_train, labels_train,
+                         batch_size=128,
+                         epochs=50,
+                         validation_split=0.2,
+                         callbacks=[EarlyStopping(patience=4), 
+                                    ReduceLROnPlateau(patience=4, min_lr=1e-6)])
+
+
+# In[ ]:
+
+
+course_metrics['course_name'].append(COURSE_LIST[course_idx])
+course_metrics['val_binary_accuracy'].append(model_output.history['val_binary_accuracy'][-1])
+course_metrics['test_accuracy'].append(accuracy_score(model.predict_classes(features_test), labels_test))
+course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_test), labels_test))
+
+
+# ### 7. MIT 2.01x - Elements of Structures
+
+# In[ ]:
+
+
+course_idx = 6
+print(COURSE_LIST[course_idx])
+
+
+# In[ ]:
+
+
+course_loc = DATA_DIR + COURSE_LIST[course_idx]
+print(course_loc)
+
+
+# In[ ]:
+
+
+features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
+features_test = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
+
+labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
+labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
+
+
+# In[ ]:
+
+
+features_train = np.array(features_train)
+features_test = np.array(features_test)
+
+labels_train = np.array(labels_train).ravel()
+labels_test = np.array(labels_test).ravel()
+
+
+# In[ ]:
+
+
+features_train.shape
+
+
+# In[ ]:
+
+
+labels_train.shape
+
+
+# In[ ]:
+
+
+K.clear_session()
+
+
+# In[ ]:
+
+
+model = build(nb_initial_layer=64, dense_layer_lst=[32, 32, 32], dpt_rate=0.05, learning_rate=1e-2)
+model.summary()
+
+
+# In[ ]:
+
+
+model_output = model.fit(features_train, labels_train,
+                         batch_size=128,
+                         epochs=50,
+                         validation_split=0.2,
+                         callbacks=[EarlyStopping(patience=4), 
+                                    ReduceLROnPlateau(patience=4, min_lr=1e-6)])
+
+
+# In[ ]:
+
+
+course_metrics['course_name'].append(COURSE_LIST[course_idx])
+course_metrics['val_binary_accuracy'].append(model_output.history['val_binary_accuracy'][-1])
+course_metrics['test_accuracy'].append(accuracy_score(model.predict_classes(features_test), labels_test))
+course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_test), labels_test))
+
+
+# ### 8. MIT 3.091x (Fall) - Introduction to Solid State Chemistry
+
+# In[ ]:
+
+
+course_idx = 7
+print(COURSE_LIST[course_idx])
+
+
+# In[ ]:
+
+
+course_loc = DATA_DIR + COURSE_LIST[course_idx]
+print(course_loc)
+
+
+# In[ ]:
+
+
+features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
+features_test = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
+
+labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
+labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
+
+
+# In[ ]:
+
+
+features_train = np.array(features_train)
+features_test = np.array(features_test)
+
+labels_train = np.array(labels_train).ravel()
+labels_test = np.array(labels_test).ravel()
+
+
+# In[ ]:
+
+
+features_train.shape
+
+
+# In[ ]:
+
+
+labels_train.shape
+
+
+# In[ ]:
+
+
+K.clear_session()
+
+
+# In[ ]:
+
+
+model = build(nb_initial_layer=64, dense_layer_lst=[32, 32, 32], dpt_rate=0.05, learning_rate=1e-2)
+model.summary()
+
+
+# In[ ]:
+
+
+model_output = model.fit(features_train, labels_train,
+                         batch_size=128,
+                         epochs=50,
+                         validation_split=0.2,
+                         callbacks=[EarlyStopping(patience=4), 
+                                    ReduceLROnPlateau(patience=4, min_lr=1e-6)])
+
+
+# In[ ]:
+
+
+course_metrics['course_name'].append(COURSE_LIST[course_idx])
+course_metrics['val_binary_accuracy'].append(model_output.history['val_binary_accuracy'][-1])
+course_metrics['test_accuracy'].append(accuracy_score(model.predict_classes(features_test), labels_test))
+course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_test), labels_test))
+
+
+# ### 9. MIT 3.091x (Spring) - Introduction to Solid State Chemistry 
+
+# In[ ]:
+
+
+course_idx = 8
+print(COURSE_LIST[course_idx])
+
+
+# In[ ]:
+
+
+course_loc = DATA_DIR + COURSE_LIST[course_idx]
+print(course_loc)
+
+
+# In[ ]:
+
+
+features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
+features_test = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
+
+labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
+labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
+
+
+# In[ ]:
+
+
+features_train = np.array(features_train)
+features_test = np.array(features_test)
+
+labels_train = np.array(labels_train).ravel()
+labels_test = np.array(labels_test).ravel()
+
+
+# In[ ]:
+
+
+features_train.shape
+
+
+# In[ ]:
+
+
+labels_train.shape
+
+
+# In[ ]:
+
+
+K.clear_session()
+
+
+# In[ ]:
+
+
+model = build(nb_initial_layer=64, dense_layer_lst=[32, 32, 32], dpt_rate=0.05, learning_rate=1e-2)
+model.summary()
+
+
+# In[ ]:
+
+
+model_output = model.fit(features_train, labels_train,
+                         batch_size=128,
+                         epochs=50,
+                         validation_split=0.2,
+                         callbacks=[EarlyStopping(patience=4), 
+                                    ReduceLROnPlateau(patience=4, min_lr=1e-6)])
+
+
+# In[ ]:
+
+
+course_metrics['course_name'].append(COURSE_LIST[course_idx])
+course_metrics['val_binary_accuracy'].append(model_output.history['val_binary_accuracy'][-1])
+course_metrics['test_accuracy'].append(accuracy_score(model.predict_classes(features_test), labels_test))
+course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_test), labels_test))
+
+
+# ### 10. MIT 6.002x (Fall) - Circuits and Electronics
+
+# In[ ]:
+
+
+course_idx = 9
+print(COURSE_LIST[course_idx])
+
+
+# In[ ]:
+
+
+course_loc = DATA_DIR + COURSE_LIST[course_idx]
+print(course_loc)
+
+
+# In[ ]:
+
+
+features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
+features_test = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
+
+labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
+labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
+
+
+# In[ ]:
+
+
+features_train = np.array(features_train)
+features_test = np.array(features_test)
+
+labels_train = np.array(labels_train).ravel()
+labels_test = np.array(labels_test).ravel()
+
+
+# In[ ]:
+
+
+features_train.shape
+
+
+# In[ ]:
+
+
+labels_train.shape
+
+
+# In[ ]:
+
+
+K.clear_session()
+
+
+# In[ ]:
+
+
+model = build(nb_initial_layer=64, dense_layer_lst=[32, 32, 32], dpt_rate=0.05, learning_rate=1e-2)
+model.summary()
+
+
+# In[ ]:
+
+
+model_output = model.fit(features_train, labels_train,
+                         batch_size=128,
+                         epochs=50,
+                         validation_split=0.2,
+                         callbacks=[EarlyStopping(patience=4), 
+                                    ReduceLROnPlateau(patience=4, min_lr=1e-6)])
+
+
+# In[ ]:
+
+
+course_metrics['course_name'].append(COURSE_LIST[course_idx])
+course_metrics['val_binary_accuracy'].append(model_output.history['val_binary_accuracy'][-1])
+course_metrics['test_accuracy'].append(accuracy_score(model.predict_classes(features_test), labels_test))
+course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_test), labels_test))
+
+
+# ### 11. MIT 6.002x (Spring) - Circuits and Electronics
+
+# In[ ]:
+
+
+course_idx = 10
+print(COURSE_LIST[course_idx])
+
+
+# In[ ]:
+
+
+course_loc = DATA_DIR + COURSE_LIST[course_idx]
+print(course_loc)
+
+
+# In[ ]:
+
+
+features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
+features_test = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
+
+labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
+labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
+
+
+# In[ ]:
+
+
+features_train = np.array(features_train)
+features_test = np.array(features_test)
+
+labels_train = np.array(labels_train).ravel()
+labels_test = np.array(labels_test).ravel()
+
+
+# In[ ]:
+
+
+features_train.shape
+
+
+# In[ ]:
+
+
+labels_train.shape
+
+
+# In[ ]:
+
+
+K.clear_session()
+
+
+# In[ ]:
+
+
+model = build(nb_initial_layer=64, dense_layer_lst=[32, 32, 32], dpt_rate=0.05, learning_rate=1e-2)
+model.summary()
+
+
+# In[ ]:
+
+
+model_output = model.fit(features_train, labels_train,
+                         batch_size=128,
+                         epochs=50,
+                         validation_split=0.2,
+                         callbacks=[EarlyStopping(patience=4), 
+                                    ReduceLROnPlateau(patience=4, min_lr=1e-6)])
+
+
+# In[ ]:
+
+
+course_metrics['course_name'].append(COURSE_LIST[course_idx])
+course_metrics['val_binary_accuracy'].append(model_output.history['val_binary_accuracy'][-1])
+course_metrics['test_accuracy'].append(accuracy_score(model.predict_classes(features_test), labels_test))
+course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_test), labels_test))
+
+
+# ### 12. MIT 6.00x (Fall) - Introduction to Computer Science
+
+# In[ ]:
+
+
+course_idx = 11
+print(COURSE_LIST[course_idx])
+
+
+# In[ ]:
+
+
+course_loc = DATA_DIR + COURSE_LIST[course_idx]
+print(course_loc)
+
+
+# In[ ]:
+
+
+features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
+features_test = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
+
+labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
+labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
+
+
+# In[ ]:
+
+
+features_train = np.array(features_train)
+features_test = np.array(features_test)
+
+labels_train = np.array(labels_train).ravel()
+labels_test = np.array(labels_test).ravel()
+
+
+# In[ ]:
+
+
+features_train.shape
+
+
+# In[ ]:
+
+
+labels_train.shape
+
+
+# In[ ]:
+
+
+K.clear_session()
+
+
+# In[ ]:
+
+
+model = build(nb_initial_layer=64, dense_layer_lst=[32, 32, 32], dpt_rate=0.05, learning_rate=1e-2)
+model.summary()
+
+
+# In[ ]:
+
+
+model_output = model.fit(features_train, labels_train,
+                         batch_size=128,
+                         epochs=50,
+                         validation_split=0.2,
+                         callbacks=[EarlyStopping(patience=4), 
+                                    ReduceLROnPlateau(patience=4, min_lr=1e-6)])
+
+
+# In[ ]:
+
+
+course_metrics['course_name'].append(COURSE_LIST[course_idx])
+course_metrics['val_binary_accuracy'].append(model_output.history['val_binary_accuracy'][-1])
+course_metrics['test_accuracy'].append(accuracy_score(model.predict_classes(features_test), labels_test))
+course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_test), labels_test))
+
+
+# ### 13. MIT 6.00x (Spring) - Introduction to Computer Science
+
+# In[ ]:
+
+
+course_idx = 12
+print(COURSE_LIST[course_idx])
+
+
+# In[ ]:
+
+
+course_loc = DATA_DIR + COURSE_LIST[course_idx]
+print(course_loc)
+
+
+# In[ ]:
+
+
+features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
+features_test = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
+
+labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
+labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
+
+
+# In[ ]:
+
+
+features_train = np.array(features_train)
+features_test = np.array(features_test)
+
+labels_train = np.array(labels_train).ravel()
+labels_test = np.array(labels_test).ravel()
+
+
+# In[ ]:
+
+
+features_train.shape
+
+
+# In[ ]:
+
+
+labels_train.shape
+
+
+# In[ ]:
+
+
+K.clear_session()
+
+
+# In[ ]:
+
+
+model = build(nb_initial_layer=64, dense_layer_lst=[32, 32, 32], dpt_rate=0.05, learning_rate=1e-2)
+model.summary()
+
+
+# In[ ]:
+
+
+model_output = model.fit(features_train, labels_train,
+                         batch_size=128,
+                         epochs=50,
+                         validation_split=0.2,
+                         callbacks=[EarlyStopping(patience=4), 
+                                    ReduceLROnPlateau(patience=4, min_lr=1e-6)])
+
+
+# In[ ]:
+
+
+course_metrics['course_name'].append(COURSE_LIST[course_idx])
+course_metrics['val_binary_accuracy'].append(model_output.history['val_binary_accuracy'][-1])
+course_metrics['test_accuracy'].append(accuracy_score(model.predict_classes(features_test), labels_test))
+course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_test), labels_test))
+
+
+# ### 14. MIT 7.00x - Introduction to Biology - secret of life
+
+# In[ ]:
+
+
+course_idx = 13
+print(COURSE_LIST[course_idx])
+
+
+# In[ ]:
+
+
+course_loc = DATA_DIR + COURSE_LIST[course_idx]
+print(course_loc)
+
+
+# In[ ]:
+
+
+features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
+features_test = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
+
+labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
+labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
+
+
+# In[ ]:
+
+
+features_train = np.array(features_train)
+features_test = np.array(features_test)
+
+labels_train = np.array(labels_train).ravel()
+labels_test = np.array(labels_test).ravel()
+
+
+# In[ ]:
+
+
+features_train.shape
+
+
+# In[ ]:
+
+
+labels_train.shape
+
+
+# In[ ]:
+
+
+K.clear_session()
+
+
+# In[ ]:
+
+
+model = build(nb_initial_layer=64, dense_layer_lst=[32, 32, 32], dpt_rate=0.05, learning_rate=1e-2)
+model.summary()
+
+
+# In[ ]:
+
+
+model_output = model.fit(features_train, labels_train,
+                         batch_size=128,
+                         epochs=50,
+                         validation_split=0.2,
+                         callbacks=[EarlyStopping(patience=4), 
+                                    ReduceLROnPlateau(patience=4, min_lr=1e-6)])
+
+
+# In[ ]:
+
+
+course_metrics['course_name'].append(COURSE_LIST[course_idx])
+course_metrics['val_binary_accuracy'].append(model_output.history['val_binary_accuracy'][-1])
+course_metrics['test_accuracy'].append(accuracy_score(model.predict_classes(features_test), labels_test))
+course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_test), labels_test))
+
+
+# ### 15. MIT 8.02x - Electricity and Magnetism
+
+# In[ ]:
+
+
+course_idx = 14
+print(COURSE_LIST[course_idx])
+
+
+# In[ ]:
+
+
+course_loc = DATA_DIR + COURSE_LIST[course_idx]
+print(course_loc)
+
+
+# In[ ]:
+
+
+features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
+features_test = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
+
+labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
+labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
+
+
+# In[ ]:
+
+
+features_train = np.array(features_train)
+features_test = np.array(features_test)
+
+labels_train = np.array(labels_train).ravel()
+labels_test = np.array(labels_test).ravel()
+
+
+# In[ ]:
+
+
+features_train.shape
+
+
+# In[ ]:
+
+
+labels_train.shape
+
+
+# In[ ]:
+
+
+K.clear_session()
+
+
+# In[ ]:
+
+
+model = build(nb_initial_layer=64, dense_layer_lst=[32, 32, 32], dpt_rate=0.05, learning_rate=1e-2)
+model.summary()
+
+
+# In[ ]:
+
+
+model_output = model.fit(features_train, labels_train,
+                         batch_size=128,
+                         epochs=50,
+                         validation_split=0.2,
+                         callbacks=[EarlyStopping(patience=4), 
+                                    ReduceLROnPlateau(patience=4, min_lr=1e-6)])
+
+
+# In[ ]:
+
+
+course_metrics['course_name'].append(COURSE_LIST[course_idx])
+course_metrics['val_binary_accuracy'].append(model_output.history['val_binary_accuracy'][-1])
+course_metrics['test_accuracy'].append(accuracy_score(model.predict_classes(features_test), labels_test))
+course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_test), labels_test))
+
+
+# ### 16. MIT 8.MReV - Mechanics Review
+
+# In[ ]:
+
+
+course_idx = 15
+print(COURSE_LIST[course_idx])
+
+
+# In[ ]:
+
+
+course_loc = DATA_DIR + COURSE_LIST[course_idx]
+print(course_loc)
+
+
+# In[ ]:
+
+
+features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
+features_test = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
+
+labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
+labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
+
+
+# In[ ]:
+
+
+features_train = np.array(features_train)
+features_test = np.array(features_test)
+
+labels_train = np.array(labels_train).ravel()
+labels_test = np.array(labels_test).ravel()
+
+
+# In[ ]:
+
+
+features_train.shape
+
+
+# In[ ]:
+
+
+labels_train.shape
+
+
+# In[ ]:
+
+
+K.clear_session()
+
+
+# In[ ]:
+
+
+model = build(nb_initial_layer=64, dense_layer_lst=[32, 32, 32], dpt_rate=0.05, learning_rate=1e-2)
+model.summary()
+
+
+# In[ ]:
+
+
+model_output = model.fit(features_train, labels_train,
+                         batch_size=128,
+                         epochs=50,
+                         validation_split=0.2,
+                         callbacks=[EarlyStopping(patience=4), 
+                                    ReduceLROnPlateau(patience=4, min_lr=1e-6)])
+
+
+# In[ ]:
+
+
+course_metrics['course_name'].append(COURSE_LIST[course_idx])
+course_metrics['val_binary_accuracy'].append(model_output.history['val_binary_accuracy'][-1])
+course_metrics['test_accuracy'].append(accuracy_score(model.predict_classes(features_test), labels_test))
+course_metrics['test_f1_score'].append(f1_score(model.predict_classes(features_test), labels_test))
 
