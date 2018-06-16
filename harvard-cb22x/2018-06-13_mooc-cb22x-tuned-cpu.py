@@ -11,20 +11,20 @@
 import os
 
 
-# In[6]:
+# In[2]:
 
 
 CONSOLIDATED_DATA_DIR = '../processed/'
 COURSE_LIST = [d[0][13:] for d in os.walk(CONSOLIDATED_DATA_DIR)][1:]
 
 
-# In[7]:
+# In[3]:
 
 
 COURSE_LIST
 
 
-# In[8]:
+# In[4]:
 
 
 DATA_DIR = '../processed-final/'
@@ -32,7 +32,7 @@ DATA_DIR = '../processed-final/'
 
 # ## Design the feed-forward neural net
 
-# In[9]:
+# In[5]:
 
 
 import pandas as pd
@@ -40,31 +40,20 @@ import numpy as np
 import tensorflow as tf
 
 
-# In[10]:
+# In[6]:
 
 
 np.random.seed(20130810)
 tf.set_random_seed(20130810)
 
 
-# In[11]:
+# In[7]:
 
 
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plothelpers as plh
 
 
-# In[12]:
-
-
-get_ipython().magic('matplotlib inline')
-
-sns.set_context('talk', font_scale=1.2)
-sns.set_palette('gray')
-sns.set_style('ticks', {'grid_color' : 0.6})
-
-
-# In[24]:
+# In[8]:
 
 
 from keras.models import Sequential, load_model
@@ -84,14 +73,14 @@ from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 from keras import backend as K
 
 
-# In[19]:
+# In[9]:
 
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score
 
 
-# In[ ]:
+# In[10]:
 
 
 def build(network_type=Sequential, 
@@ -133,61 +122,23 @@ def build(network_type=Sequential,
     return model
 
 
-# In[ ]:
-
-
-def plot_loss(fit_history, course_name):
-    epochs = range(1, len(fit_history['binary_accuracy'])+1)
-    
-    plt.figure(figsize=(12, 6))
-    
-    plt.plot(epochs, fit_history['loss'], '--', label='Training loss')
-    plt.plot(epochs, fit_history['val_loss'], '-', label='Validation loss')
-    
-    plt.title('Training and Validation loss for ' + course_name)
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.legend()
-    
-    plt.show()
-
-
-# In[ ]:
-
-
-def plot_accuracy(fit_history, course_name):
-    epochs = range(1, len(fit_history['binary_accuracy'])+1)
-    
-    plt.figure(figsize=(12, 6))
-    
-    plt.plot(epochs, fit_history['binary_accuracy'], '--', label='Training Accuracy')
-    plt.plot(epochs, fit_history['val_binary_accuracy'], '-', label='Validation Accuracy')
-    
-    plt.title('Training and Validation accuracy for ' + course_name)
-    plt.xlabel('Epochs')
-    plt.ylabel('Accuracy')
-    plt.legend()
-    
-    plt.show()
-
-
 # ## Tune the network
 
-# In[13]:
+# In[11]:
 
 
 course_idx = 0
 print(COURSE_LIST[course_idx])
 
 
-# In[14]:
+# In[12]:
 
 
 course_loc = DATA_DIR + COURSE_LIST[course_idx]
 print(course_loc)
 
 
-# In[15]:
+# In[13]:
 
 
 features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
@@ -197,7 +148,7 @@ labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index
 labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
 
 
-# In[16]:
+# In[14]:
 
 
 features_train = np.array(features_train)
@@ -207,19 +158,19 @@ labels_train = np.array(labels_train).ravel()
 labels_test = np.array(labels_test).ravel()
 
 
-# In[17]:
+# In[15]:
 
 
 features_train.shape
 
 
-# In[18]:
+# In[16]:
 
 
 labels_train.shape
 
 
-# In[20]:
+# In[17]:
 
 
 features_train, features_validation, labels_train, labels_validation = train_test_split(features_train, labels_train, 
@@ -227,25 +178,25 @@ features_train, features_validation, labels_train, labels_validation = train_tes
                                                                                         random_state=20130810)
 
 
-# In[21]:
+# In[18]:
 
 
 features_train.shape, features_validation.shape
 
 
-# In[22]:
+# In[19]:
 
 
 labels_train.shape, labels_validation.shape
 
 
-# In[ ]:
+# In[20]:
 
 
 K.clear_session()
 
 
-# In[ ]:
+# In[21]:
 
 
 model = build(nb_initial_layer=32, 
@@ -256,7 +207,7 @@ model = build(nb_initial_layer=32,
 model.summary()
 
 
-# In[ ]:
+# In[22]:
 
 
 # We wish to save multiple best models.
@@ -264,7 +215,7 @@ model.summary()
 # get to the best model
 # This strategy would be useful if we are going to use an ensemble
 
-out_file_path='best-keras-runs/' +                COURSE_LIST[course_idx] +               '-8-{epoch:02d}-{val_binary_accuracy:.2f}.hdf5'
+out_file_path='../best-keras-runs/' +                COURSE_LIST[course_idx] +               '-8-{epoch:02d}-{val_binary_accuracy:.2f}.hdf5'
 
 
 # In[ ]:
@@ -276,7 +227,7 @@ out_file_path='best-keras-runs/' +                COURSE_LIST[course_idx] +     
 #              '-best-model.hdf5'
 
 
-# In[ ]:
+# In[23]:
 
 
 model_output = model.fit(features_train, labels_train,
@@ -293,60 +244,91 @@ model_output = model.fit(features_train, labels_train,
                                                     save_weights_only=False)])
 
 
-# In[ ]:
+# In[24]:
 
 
-plot_loss(model_output.history, COURSE_LIST[course_idx])
+plh.plot_loss(model_output.history, COURSE_LIST[course_idx])
 
 
-# In[ ]:
+# In[25]:
 
 
-plot_accuracy(model_output.history, COURSE_LIST[course_idx])
+plh.plot_accuracy(model_output.history, COURSE_LIST[course_idx])
 
 
 # ### Load the best model and compute metrics
 
-# In[25]:
+# In[26]:
 
 
 best_model = load_model('HarvardXCB22x2013_Spring-2-37-0.66.hdf5')
 
 
-# In[26]:
+# #### Training data
+
+# In[27]:
 
 
 best_model.evaluate(features_train, labels_train, batch_size=128)
 
 
-# In[27]:
+# In[28]:
 
 
 pred_probs = best_model.predict_proba(features_train)
 
 
-# In[28]:
+# In[29]:
 
 
 pred_probs.mean()
 
 
-# In[29]:
+# In[30]:
 
 
 labels_train.mean()
 
 
-# In[30]:
+# In[31]:
 
 
-plt.figure(figsize=(12,6))
-plt.hist(pred_probs)
-plt.xlabel('Predicted probability')
-plt.ylabel('Count')
-plt.title('Distribution of predicted probabilities on the training data')
-plt.show()
+plh.plot_probs(pred_probs, COURSE_LIST[course_idx], data='training')
 
+
+# #### Validation data
+
+# In[32]:
+
+
+best_model.evaluate(features_validation, labels_validation, batch_size=128)
+
+
+# In[33]:
+
+
+pred_probs = best_model.predict_proba(features_validation)
+
+
+# In[34]:
+
+
+pred_probs.mean()
+
+
+# In[35]:
+
+
+labels_validation.mean()
+
+
+# In[36]:
+
+
+plh.plot_probs(pred_probs, COURSE_LIST[course_idx], data='validation')
+
+
+# #### Test data
 
 # In[ ]:
 
