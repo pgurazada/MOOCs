@@ -73,6 +73,12 @@ from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 from keras import backend as K
 
 
+# In[18]:
+
+
+from keras.utils import to_categorical
+
+
 # In[9]:
 
 
@@ -80,13 +86,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score
 
 
-# In[10]:
+# In[34]:
 
 
 def build(network_type=Sequential, 
           nb_initial_layer=64,
           dense_layer_lst=[64],
-          nb_final_layer=1,
+          nb_final_layer=2,
           l2_penalty=0.001,
           dpt_strength=0.5,
           learning_rate=1e-4):
@@ -138,39 +144,46 @@ course_loc = DATA_DIR + COURSE_LIST[course_idx]
 print(course_loc)
 
 
-# In[13]:
+# In[24]:
 
 
-features_train = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
-features_test = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
+features_train_df = pd.read_feather(course_loc + '_features_train.feather').drop('index', axis=1)
+features_test_df = pd.read_feather(course_loc + '_features_test.feather').drop('index', axis=1)
 
-labels_train = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
-labels_test = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
-
-
-# In[14]:
+labels_train_df = pd.read_feather(course_loc + '_labels_train.feather').drop('index', axis=1)
+labels_test_df = pd.read_feather(course_loc + '_labels_test.feather').drop('index', axis=1)
 
 
-features_train = np.array(features_train)
-features_test = np.array(features_test)
-
-labels_train = np.array(labels_train).ravel()
-labels_test = np.array(labels_test).ravel()
+# In[25]:
 
 
-# In[15]:
+features_train = np.array(features_train_df)
+features_test = np.array(features_test_df)
+
+labels_train = np.array(labels_train_df).ravel()
+labels_test = np.array(labels_test_df).ravel()
+
+
+# In[26]:
 
 
 features_train.shape
 
 
-# In[16]:
+# In[27]:
+
+
+labels_train = to_categorical(labels_train)
+labels_test = to_categorical(labels_test)
+
+
+# In[28]:
 
 
 labels_train.shape
 
 
-# In[17]:
+# In[29]:
 
 
 features_train, features_validation, labels_train, labels_validation = train_test_split(features_train, labels_train, 
@@ -178,25 +191,25 @@ features_train, features_validation, labels_train, labels_validation = train_tes
                                                                                         random_state=20130810)
 
 
-# In[18]:
+# In[30]:
 
 
 features_train.shape, features_validation.shape
 
 
-# In[19]:
+# In[31]:
 
 
 labels_train.shape, labels_validation.shape
 
 
-# In[20]:
+# In[35]:
 
 
 K.clear_session()
 
 
-# In[21]:
+# In[36]:
 
 
 model = build(nb_initial_layer=32, 
@@ -207,7 +220,7 @@ model = build(nb_initial_layer=32,
 model.summary()
 
 
-# In[22]:
+# In[37]:
 
 
 # We wish to save multiple best models.
@@ -227,7 +240,7 @@ out_file_path='../best-keras-runs/' +                COURSE_LIST[course_idx] +  
 #              '-best-model.hdf5'
 
 
-# In[23]:
+# In[38]:
 
 
 model_output = model.fit(features_train, labels_train,
@@ -244,13 +257,13 @@ model_output = model.fit(features_train, labels_train,
                                                     save_weights_only=False)])
 
 
-# In[24]:
+# In[39]:
 
 
 plh.plot_loss(model_output.history, COURSE_LIST[course_idx])
 
 
-# In[25]:
+# In[40]:
 
 
 plh.plot_accuracy(model_output.history, COURSE_LIST[course_idx])
@@ -258,39 +271,27 @@ plh.plot_accuracy(model_output.history, COURSE_LIST[course_idx])
 
 # ### Load the best model and compute metrics
 
-# In[26]:
+# In[43]:
 
 
-best_model = load_model('HarvardXCB22x2013_Spring-2-37-0.66.hdf5')
+best_model = load_model('../best-keras-runs/HarvardXCB22x2013_Spring-8-16-0.65.hdf5')
 
 
 # #### Training data
 
-# In[27]:
+# In[44]:
 
 
 best_model.evaluate(features_train, labels_train, batch_size=128)
 
 
-# In[28]:
+# In[86]:
 
 
-pred_probs = best_model.predict_proba(features_train)
+pred_probs = best_model.predict_proba(features_train)[:, 1]
 
 
-# In[29]:
-
-
-pred_probs.mean()
-
-
-# In[30]:
-
-
-labels_train.mean()
-
-
-# In[31]:
+# In[90]:
 
 
 plh.plot_probs(pred_probs, COURSE_LIST[course_idx], data='training')
@@ -298,31 +299,19 @@ plh.plot_probs(pred_probs, COURSE_LIST[course_idx], data='training')
 
 # #### Validation data
 
-# In[32]:
+# In[91]:
 
 
 best_model.evaluate(features_validation, labels_validation, batch_size=128)
 
 
-# In[33]:
+# In[92]:
 
 
-pred_probs = best_model.predict_proba(features_validation)
+pred_probs = best_model.predict_proba(features_validation)[:, 1]
 
 
-# In[34]:
-
-
-pred_probs.mean()
-
-
-# In[35]:
-
-
-labels_validation.mean()
-
-
-# In[36]:
+# In[95]:
 
 
 plh.plot_probs(pred_probs, COURSE_LIST[course_idx], data='validation')
@@ -337,4 +326,104 @@ plh.plot_probs(pred_probs, COURSE_LIST[course_idx], data='validation')
 
 # accuracy_score(best_model.predict_classes(features_test), labels_test)
 # f1_score(best_model.predict_classes(features_test), labels_test)
+
+
+# ## Explanations
+
+# In[55]:
+
+
+from lime import lime_tabular
+
+
+# In[116]:
+
+
+explainer = lime_tabular.LimeTabularExplainer(features_train_df, 
+                                              feature_names=features_train_df.columns.tolist(),
+                                              class_names=['notengaged', 'engaged'],
+                                              discretize_continuous=False,
+                                              verbose=True)
+
+
+# ### Explore some random points
+
+# In[128]:
+
+
+i = 44
+exp = explainer.explain_instance(features_train_df.iloc[i], best_model.predict_proba)
+
+
+# In[129]:
+
+
+exp.show_in_notebook(show_table=False, show_all=False)
+
+
+# In[122]:
+
+
+[feature_score[0] for feature_score in exp.as_list()[0:5]]
+
+
+# ### Build a random sample of points to seek explanation
+
+# In[141]:
+
+
+from collections import Counter
+
+
+# In[177]:
+
+
+explainer = lime_tabular.LimeTabularExplainer(features_train_df, 
+                                              feature_names=features_train_df.columns.tolist(),
+                                              class_names=['notengaged', 'engaged'],
+                                              discretize_continuous=False,
+                                              verbose=False)
+
+
+# In[187]:
+
+
+nb_samples = 10 # we select a random sample 0f 5000 points from the training data to see what features were important
+
+
+# In[188]:
+
+
+rand_indices = np.random.choice(features_train_df.shape[0], nb_samples, replace=False)
+
+
+# In[189]:
+
+
+top_5 = []
+
+
+# In[190]:
+
+
+get_ipython().run_cell_magic('time', '', 'for idx in rand_indices:\n    exp = explainer.explain_instance(features_train_df.iloc[idx], best_model.predict_proba)\n    top_5.append([feature_score for feature_score in exp.as_list()[0:5]])')
+
+
+# In[191]:
+
+
+top_5
+
+
+# In[184]:
+
+
+best_features_list = [feature for sublist in top_5 for feature in sublist]
+
+
+# In[185]:
+
+
+pd.DataFrame(list(Counter(best_features_list).items()),
+             columns=['Feature', 'Count']).sort_values(by='Count', ascending=False)
 
