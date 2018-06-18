@@ -355,7 +355,7 @@ i = 44
 exp = explainer.explain_instance(features_train_df.iloc[i], best_model.predict_proba)
 
 
-# In[129]:
+# In[193]:
 
 
 exp.show_in_notebook(show_table=False, show_all=False)
@@ -426,4 +426,24 @@ best_features_list = [feature for sublist in top_5 for feature in sublist]
 
 pd.DataFrame(list(Counter(best_features_list).items()),
              columns=['Feature', 'Count']).sort_values(by='Count', ascending=False)
+
+
+# In[194]:
+
+
+from anchor import anchor_tabular
+
+
+# In[203]:
+
+
+exp = anchor_tabular.AnchorTabularExplainer(class_names=['notengaged', 'engaged'],
+                                            feature_names=features_train_df.columns.tolist(),
+                                            data=features_train_df)
+
+
+# In[209]:
+
+
+exp.fit(features_train_df, labels_train_df, features_validation_df, labels_validation_df, discretizer='decile')
 
