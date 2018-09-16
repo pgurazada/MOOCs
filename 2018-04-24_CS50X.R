@@ -10,8 +10,6 @@ library(ggthemes)
 library(gridExtra)
 library(caret)
 
-set.seed(20130810)
-
 theme_set(theme_few() + theme(plot.title = element_text(face="bold")))
 
 library(doParallel)
@@ -154,17 +152,19 @@ cs50x_neng_logit$results
 #' demographics
 
 cs50x_neng_rf <- train(factor(engaged) ~ .,
-                       data = cs50x_train,
+                       data = cs50x_train,  
                        method = "rf",
                        tuneGrid = expand.grid(mtry = 1:4),
-                       trControl = trainControl(method = "repeatedcv",
+                       trControl = trainControl(method = 'cv',
                                                 number = 10,
-                                                repeats = 3,
                                                 allowParallel = TRUE, 
                                                 verboseIter = TRUE),
-                       ntree= 1000)
+                       ntree = 1000)
 
 cs50x_neng_rf$results
 varImp(cs50x_neng_rf)
 
 #' Random forests also do no better than 68%
+#' 
+
+stopCluster(cl)
