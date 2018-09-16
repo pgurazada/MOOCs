@@ -14,10 +14,11 @@ set.seed(20130810)
 
 theme_set(theme_few() + theme(plot.title = element_text(face="bold")))
 
-library(parallel)
 library(doParallel)
-cluster <- makeCluster(detectCores() - 1) # convention to leave 1 core for OS
-registerDoParallel(cluster)
+cores <- detectCores()
+cl <- makeCluster(cores-1)
+registerDoParallel(cl)
+clusterSetRNGStream(cl, 20130810)
 
 mooc_df <- read_csv("data/HMXPC13_DI_v2_5-14-14.csv", progress = TRUE)
 glimpse(mooc_df)
@@ -141,7 +142,8 @@ cs50x_neng_logit <- train(factor(engaged) ~ .,
                           trControl = trainControl(method = "repeatedcv",
                                                    number = 10,
                                                    repeats = 5,
-                                                   allowParallel = TRUE),
+                                                   allowParallel = TRUE, 
+                                                   verboseIter = TRUE),
                           family = binomial(link = "logit"))
 
 summary(cs50x_neng_logit)
@@ -158,7 +160,8 @@ cs50x_neng_rf <- train(factor(engaged) ~ .,
                        trControl = trainControl(method = "repeatedcv",
                                                 number = 10,
                                                 repeats = 3,
-                                                allowParallel = TRUE),
+                                                allowParallel = TRUE, 
+                                                verboseIter = TRUE),
                        ntree= 1000)
 
 cs50x_neng_rf$results

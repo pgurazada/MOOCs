@@ -111,7 +111,7 @@ cb22x_df %>%
          title = "Distribution of possible outcome variables")
 ```
 
-There is severe class imbalance in `certfied` or `explored`. What is interesting here is that between registering for the course and to actually viewwing the course itself there is a steep dropout rate. Dropouts occur before the course begins and after the course begins (Note that there are some clever chaps who log in just one time and run through the course). These are a minority though and one should think of ways to correct such behavior.
+There is severe class imbalance in `certfied` or `explored`. What is interesting here is that between registering for the course and to actually viewing the course itself there is a steep dropout rate. Dropouts occur before the course begins and after the course begins (Note that there are some clever chaps who log in just one time and run through the course). These are a minority though and one should think of ways to correct such behavior.
 
 Let us begin with the `viewed` as the outcome. The question we wish to answer is: What features drive the students who register to start the course. As a first pass, let us fit a logistic regression.
 
