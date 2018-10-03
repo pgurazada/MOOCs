@@ -49,7 +49,7 @@ sm = SMOTE(random_state=20130810)
     
 features_train_smote, labels_train_smote = sm.fit_sample(features_train, labels_train)
 
-if '__name__' == '__main__':
+if __name__ == '__main__':
     model_rf = RandomForestClassifier(n_jobs=-1, 
                                       warm_start=True,
                                       random_state=20130810)
