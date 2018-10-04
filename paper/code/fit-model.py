@@ -3,14 +3,14 @@
 
 # In this workbook, we fit the processed raw data to Logistic Regression, Random Forests and Gradient Boosted Trees
 
-# In[ ]:
+# In[1]:
 
 
 import pandas as pd
 import numpy as np
 
 
-# In[ ]:
+# In[2]:
 
 
 from sklearn.linear_model import LogisticRegression
@@ -18,13 +18,13 @@ from sklearn.model_selection import train_test_split, RepeatedKFold, GridSearchC
 from sklearn.metrics import roc_curve, auc
 
 
-# In[ ]:
+# In[3]:
 
 
 import xgboost as xgb
 
 
-# In[ ]:
+# In[4]:
 
 
 from imblearn.over_sampling import SMOTE
@@ -32,13 +32,13 @@ from imblearn.over_sampling import SMOTE
 
 # ### Import the data set
 
-# In[ ]:
+# In[5]:
 
 
 mooc_df = pd.read_feather('../data/processed-mooc-data.feather')
 
 
-# In[ ]:
+# In[6]:
 
 
 mooc_clean_df = pd.get_dummies(mooc_df)
@@ -53,7 +53,7 @@ features_train, features_test, labels_train, labels_test = train_test_split(feat
 
 # ### Helpers to fit and evaluate the model
 
-# In[ ]:
+# In[7]:
 
 
 def fit_model(features_train, labels_train, classifier_obj, param_grid, n_splits=10, n_repeats=3):
@@ -83,7 +83,7 @@ def fit_model(features_train, labels_train, classifier_obj, param_grid, n_splits
     return grid_search
 
 
-# In[ ]:
+# In[8]:
 
 
 def evaluate(model_fit_grid, features_test, labels_test):
@@ -188,13 +188,13 @@ rf_roc_data.to_feather('../../../../../Google Drive/data-for-experimentation/rf-
 
 # ### Fit and evaluate Gradient Boosted Trees
 
-# In[ ]:
+# In[9]:
 
 
 model_xgb = xgb.XGBClassifier(objective='reg:logistic')
 
 
-# In[ ]:
+# In[10]:
 
 
 param_grid = {
@@ -203,31 +203,31 @@ param_grid = {
 }
 
 
-# In[ ]:
+# In[11]:
 
 
-xgb_fit_grid = fit_model(features_train, labels_train, model_xgb, parameter_grid, n_splits=10, n_repeats=1)
+xgb_fit_grid = fit_model(features_train, labels_train, model_xgb, param_grid, n_splits=10, n_repeats=1)
 
 
-# In[ ]:
+# In[12]:
 
 
 xgb_roc_data, xgb_accuracy, xgb_auc = evaluate(xgb_fit_grid, features_test, labels_test)
 
 
-# In[ ]:
+# In[13]:
 
 
 xgb_roc_data.to_feather('../data/xgb-roc.feather')
 
 
-# In[ ]:
+# In[14]:
 
 
 xgb_roc_data.to_feather('../../../../../Google Drive/data-for-experimentation/xgb-roc.feather')
 
 
-# In[ ]:
+# In[15]:
 
 
 pd.DataFrame({ 'acccuracy' : [logit_accuracy, rf_accuracy, xgb_accuracy] ,
