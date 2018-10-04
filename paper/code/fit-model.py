@@ -21,6 +21,12 @@ from sklearn.metrics import roc_curve, auc
 # In[ ]:
 
 
+import xgboost as xgb
+
+
+# In[ ]:
+
+
 from imblearn.over_sampling import SMOTE
 
 
@@ -128,6 +134,12 @@ logit_roc_data, logit_accuracy, logit_auc = evaluate(logit_fit_grid, features_te
 logit_roc_data.to_feather('../data/logit-roc.feather')
 
 
+# In[ ]:
+
+
+logit_roc_data.to_feather('../../../../../Google Drive/data-for-experimentation/logit-roc.feather')
+
+
 # ### Fit and evaluate Random Forests
 
 # In[ ]:
@@ -153,7 +165,7 @@ param_grid = {
 # In[ ]:
 
 
-rf_fit_grid = fit_model(features_train, labels_train, model_rf, parameter_grid)
+rf_fit_grid = fit_model(features_train, labels_train, model_rf, parameter_grid, n_splits=10, n_repeats=1)
 
 
 # In[ ]:
@@ -168,4 +180,56 @@ rf_roc_data, rf_accuracy, rf_auc = evaluate(rf_fit_grid, features_test, labels_t
 rf_roc_data.to_feather('../data/rf-roc.feather')
 
 
+# In[ ]:
+
+
+rf_roc_data.to_feather('../../../../../Google Drive/data-for-experimentation/rf-roc.feather')
+
+
 # ### Fit and evaluate Gradient Boosted Trees
+
+# In[ ]:
+
+
+model_xgb = xgb.XGBClassifier(objective='reg:logistic')
+
+
+# In[ ]:
+
+
+param_grid = {
+    'n_estimators': [200, 300],
+    'max_depth': [10, 12]
+}
+
+
+# In[ ]:
+
+
+xgb_fit_grid = fit_model(features_train, labels_train, model_xgb, parameter_grid, n_splits=10, n_repeats=1)
+
+
+# In[ ]:
+
+
+xgb_roc_data, xgb_accuracy, xgb_auc = evaluate(xgb_fit_grid, features_test, labels_test)
+
+
+# In[ ]:
+
+
+xgb_roc_data.to_feather('../data/xgb-roc.feather')
+
+
+# In[ ]:
+
+
+xgb_roc_data.to_feather('../../../../../Google Drive/data-for-experimentation/xgb-roc.feather')
+
+
+# In[ ]:
+
+
+pd.DataFrame({ 'acccuracy' : [logit_accuracy, rf_accuracy, xgb_accuracy] ,
+               'auc' : [logit_auc, rf_auc, xgb_auc]})
+
