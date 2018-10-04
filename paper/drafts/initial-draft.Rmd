@@ -184,6 +184,8 @@ In all the models we executed, the engagement status was used as the outcome (co
 
 random forest, xgboost and mlp here
 
+xgb accuracy is 76.1% highest among all.
+
 Insert Figure 3 here
 As can be seen from the values of Cohen’s Kappa in Figure 3, the model with just the age, education, gender and registered date is far from being predictive of initial drop-out. For two of the courses, random forests (and logit) do a great job in predicting drop-out using the features we have considered, but we did not observe similar accuracy on the test data. Overall, random forests do improve predictive power over logistic regression, but not by a large amount. 
 In sum, we conclude that key predictors of initial drop-out are missing from the data collected in the Harvard and MIT MOOCs. Given the current data set, we cannot crystallize key observable features that result in high initial drop-out. We note that there are other features in the data set relevant to learners who engaged with the data, e.g., number of chapters accessed, number of video play events that might predict eventual certification. 

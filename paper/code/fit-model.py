@@ -198,8 +198,8 @@ model_xgb = xgb.XGBClassifier(objective='reg:logistic')
 
 
 param_grid = {
-    'n_estimators': [200, 300],
-    'max_depth': [10, 12]
+    'n_estimators': [200, 300, 500],
+    'max_depth': [6, 10, 12]
 }
 
 
@@ -227,9 +227,52 @@ xgb_roc_data.to_feather('../data/xgb-roc.feather')
 xgb_roc_data.to_feather('../../../../../Google Drive/data-for-experimentation/xgb-roc.feather')
 
 
-# In[15]:
+# In[ ]:
 
 
 pd.DataFrame({ 'acccuracy' : [logit_accuracy, rf_accuracy, xgb_accuracy] ,
                'auc' : [logit_auc, rf_auc, xgb_auc]})
+
+
+# In[22]:
+
+
+xgb_fit_grid.best_estimator_
+
+
+# In[32]:
+
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+get_ipython().magic('matplotlib inline')
+sns.set_style('whitegrid', {'grid_color' : '0.9'})
+sns.set_context('talk', font_scale=1.2)
+sns.set_palette('gray')
+
+
+# In[44]:
+
+
+pd.DataFrame({ 'feature' : mooc_clean_df.columns[1:], 
+               'feature_importance' : xgb_fit_grid.best_estimator_.feature_importances_}).to_feather('../data/xgb-feature-importance.feather')
+
+
+# In[33]:
+
+
+xgb.plot_importance(xgb_fit_grid.best_estimator_)
+
+
+# In[41]:
+
+
+len(mooc_clean_df.columns[1:])
+
+
+# In[42]:
+
+
+len(xgb_fit_grid.best_estimator_.feature_importances_)
 
