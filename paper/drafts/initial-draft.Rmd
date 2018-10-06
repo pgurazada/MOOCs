@@ -1,21 +1,18 @@
 ---
-title: "Why don't they show up?"
-author: |
-  | Pavankumar Gurazada^[Corresponding author: efpm04015@iiml.ac.in] $^1$, Moutusy Maity $^1$
-  | $^1$Indian Institute of Management, Lucknow (Noida Campus)
+title: "Why Don't They Show Up?"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output: 
   pdf_document:
     number_sections: true
     toc: false
-fontfamily: mathpazo
+fontfamily: times
 fontsize: 12pt
 bibliography: mooc-refs.bib
 csl: international-journal-of-research-in-marketing.csl
 
 header-includes:
-  - \usepackage{endfloat}    
-  - \usepackage{setspace}\doublespacing
+  - \usepackage[nofiglist, nofighead]{endfloat}  
+  - \usepackage{setspace}\singlespacing
 ---
 
 ```{r setup, include=FALSE}
@@ -29,6 +26,7 @@ library(tidyverse)
 library(lubridate)
 library(janitor)
 library(here)
+library(feather)
 
 library(viridis)
 library(ggthemes)
@@ -44,26 +42,25 @@ DATA_LOC <- here("paper", "data", "full-mooc-data.csv")
 
 # Introduction
 
-Massive Open Online Courses (MOOCs) have received widespread attention since their launch in 2012. Since then, MOOCs evolved from being largely free to access to a pay-for-certification model. For e.g., 78 million learners took part in MOOCs in 2017, with the proportion of participants paying for courses increasing over previous years [@peters2018moocsevolved]. Several local universities and governments have also stepped in to the fray by offering several of their courses online, where participants might get a certificate based on their performance in the course for a fee. Over the past couple of years MOOCs have even evolved into public policy initiatives for e.g., Swayam - a collaborative effort between the Government of India and several top universities in India [@bast2018swayam] - with the aim of upskilling the labor force. 
+Massive Open Online Courses (MOOCs) have received widespread attention since their launch in 2012. Since then, MOOCs evolved from being largely free to access to a pay-for-certification model. For e.g., 78 million learners took part in MOOCs in 2017, with the proportion of participants paying for courses increasing over previous years [@peters2018moocsevolved]. Several local universities and governments have also stepped in to the fray by offering several of their courses online, where participants might get a certificate based on their performance in the course for a fee. Over the past couple of years MOOCs have even evolved into public policy initiatives with the aim of upskilling the labor force. A good example of such a effort is Swayam - a collaborative effort between the Government of India and several top universities in India [@bast2018swayam]. 
 
-In this paper, we focus on measuring and predicting the *drop-out rate*, i.e., the fraction of participants who enroll for a course but do not finish with a certification. We note that drop-out rates are deal-breakers for government efforts like Swayam which might get derailed by high drop-out rates. Similar is the case of small private online courses offered to corporates by universities, where high initial drop-out rate can be devastating. Following this intuition, a central theme of our proposed research is the *initial drop-out rate*, measured as the number of participants who register for a course but don’t even watch a single video. Surprisingly, there is miniscule prior research on this peculiar phenomenon that, in our opinion, shares conceptual roots with the long-standing research tradition on the intention – behavior gap observed among consumers [@sheeran2002intention]. 
-The rest of the paper is organized as follows. The first section presents a review of existing literature related to the drop-out rates in MOOCs, and formulates the central hypothesis on predictors of initial drop-out. The second section presents the details and results from predictive models. The paper concludes with a discussion on the implications of this study and a proposal for further research.  
+In this paper, we focus on measuring and predicting the *drop-out rate*, i.e., the fraction of participants who enroll for a MOOC but do not finish with a certification. We note that drop-out rates are deal-breakers for government efforts like Swayam which might get derailed by high drop-out rates. Similar is the case of small private online courses offered to corporates by universities, where high initial drop-out rate can be devastating. Following this intuition, a central theme of our proposed research is the *initial drop-out rate*, measured as the number of participants who register for a course but don’t even watch a single video.
 
-# Analyzing initial dropout rate
+The rest of the paper is organized as follows. Section 2 presents a review of existing literature, and our central hypotheses on predictors of initial drop-out. Section 3 presents the details of our predictive models and results. The paper concludes with a discussion on the implications of this study and a proposal for further research.  
 
-Dropout rates in MOOCs have been a widely researched area within the machine learning community. Much of this research relies on access to fine-grained data on participant behavior captured via clickstreams. We present an overview of key themes that emerge from related research in the next sub section.
+# Analyzing initial dropout
+
+Dropout rates in MOOCs are a widely researched area within the machine learning community. Much of this research relies on access to fine-grained data on participant behavior captured via clickstreams. We present an overview of key themes that emerge from prior research in the next sub section.
 
 ## Related research
 
-As the initial euphoria on MOOCs settles down, significant research interest is being focused on peculiar aspects of participant behavior in these courses [@kross2018students]. A defining feature of MOOCs is the noticeably low certification rate (usually less than 4%) across courses and providers [@onah2014dropout]. There are two arguments proposed by scholars to explain this observation. First, there is a wide gamut of participants who enroll in MOOCs and looking only at certification rate of a course would not do justice to the utility gained by a participant from a MOOC. For e.g., @belanger2013bioelectricity show that the utility of participating in a MOOC goes beyond the attainment of certification and encompasses a quest to understand a subject, fun convenience or even exploration of a new learning medium. Second, even though the number of certifications is less in terms of percentages, absolute numbers are still many multiples of the number of students who complete a typical university course [@kizilcec2015attrition]. This observation is often cited as justification for the investments made into creating and promoting MOOCs. We submit that since MOOCs are designed to have low barriers to both entry and exit, a wide range of participant behavior can be observed. 
+As the initial euphoria on MOOCs settles down, significant research interest is being focused on peculiar aspects of participant behavior in these courses [@kross2018students]. A defining feature of MOOCs is the noticeably low certification rate (usually less than 4%) across courses and providers [@onah2014dropout]. There are two arguments proposed by scholars to explain this observation. First, there is a wide gamut of participants who enroll in MOOCs and looking only at certification rate of a course would not do justice to the utility gained by a participant from a MOOC. For e.g., @belanger2013bioelectricity show that the utility of participating in a MOOC goes beyond the attainment of certification and encompasses a quest to understand a subject, fun, convenience or even exploration of a new learning medium. Second, even though the number of certifications is less in terms of percentages, absolute numbers are still many multiples of the number of students who complete a typical university course [@kizilcec2015attrition]. This observation is often cited as justification for the investments made into creating and promoting MOOCs. We submit that since MOOCs are designed to have low barriers to both entry and exit, a wide range of participant behavior can be observed. 
 
-Researchers have tackled dropout by modeling it as the dependent variable predicted by observable aspects of a participants behavior relying on access to clickstream data [@whitehill2017delving]. However, most research attention has been focused on predicting the grades earned by participants who earn certificates. This focus on the paying segment is understandable since for-profit MOOC platforms (e.g., Coursera, edX) have limited resources that are exhausted once this segment is catered to. 
+Researchers have tackled dropout by modeling it as the dependent variable predicted by observable aspects of a participants behavior relying on access to clickstream data [@whitehill2017delving]. However, most research attention has been focused on predicting the grades earned by participants who earn certificates. This focus on the paying segment is understandable since for-profit MOOC platforms (e.g., Coursera, edX) have limited resources that are exhausted once they cater to this segment. 
 
 ## Data
 
 Our research is based on the analysis of a large data set of $476,532$ participants who enrolled for 16 Harvard and MIT MOOCs for the period 2012-2013. 
-
-### Descriptive statistics
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
 mooc_df <- read_csv(DATA_LOC)
@@ -83,7 +80,10 @@ mooc_df %>%
   gender_distribution_df
 
 ggplot(gender_distribution_df) +
-  geom_bar(aes(x = reorder(gender, n), y = n), stat = 'identity') +
+  geom_bar(aes(x = reorder(gender, n), y = n), 
+           stat = 'identity',
+           color = 'white',
+           fill = 'black') +
   labs(x = 'Gender',
        y = 'Count',
        title = 'Participant distribution by gender') +
@@ -119,7 +119,10 @@ mooc_df %>%
   location_distribution_df
 
 ggplot(location_distribution_df) +
-  geom_bar(aes(x = reorder(country, n), y = n), stat = 'identity') +
+  geom_bar(aes(x = reorder(country, n), y = n), 
+           stat = 'identity',
+           color = 'white',
+           fill = 'black') +
   labs(x = 'Country',
      y = 'Count',
      title = 'Participant distribution by location') +
@@ -136,11 +139,11 @@ grid.arrange(gender_plot, location_plot, nrow = 2)
 ```
 
 
-As Figure \ref{descriptive_plots} indicates, most of the participants are male. Also, USA and Asia contribute most to the number of participants.
+As the descriptive statistics in Figure \ref{descriptive_plots} indicate, most of the participants are male. Also, USA and Asia contribute most to the number of participants.
 
 To characterize initial drop-out on MOOCs, we define a participant as ‘engaged’ if they register and view at least one video from the course (it follows that those who browsed more than one video and those who earned certificates are also classified as ‘engaged’). Similarly, a participant is classified as ‘not engaged’ if they register but never turn up, i.e., they drop-out even before starting the course. Figure \ref{activity_status} summarizes the distribution of participants into these two categories across the 16 courses. 
 
-```{r fig.cap="Activity Status \\label{activity_status}", fig.align='center'}
+```{r fig.cap="Activity Status \\label{activity_status}", fig.align='center', out.height='100%'}
 mooc_df %>% 
   mutate(engaged = ifelse(viewed == 1 | explored == 1 | certified == 1, 1, 0),
          status = ifelse(engaged == 1, "Engaged", "Not Engaged")) %>% 
@@ -161,34 +164,90 @@ ggplot(initial_dropout_df) +
   coord_flip() 
 ```
 
-We note from Figure  \ref{activity_status} that for every course, the ‘not engaged’ category presents a significant challenge. On an average, the initial drop-out rate on the Harvard and MIT MOOCs is about 50%, which is disconcerting in the context of our earlier discussion on public policy initiatives. 
+## Predicting initial dropout
 
-Following these descriptive measures we arrive at the following research question:
+We note from Figure  \ref{activity_status} that for every course, the ‘not engaged’ category presents a significant challenge. On an average, the initial drop-out rate on the Harvard and MIT MOOCs is about 50%, which is disconcerting in the context of our earlier discussion on public policy initiatives. While there is little research on the drivers of initial dropout, some scholars have pointed out the unique aspects of MOOCs as one of the prime reasons for dropout. For e.g., in an analysis of factors that predict completion of a course, @yang2013turn argue that MOOCs have a unique development history. Starting from a small participant base upon announcement, new cohorts join in week after week. Consequently, the authors argue that if supportive communities do not evolve as the course progresses, participants might feel overwhelmed and drop-out. 
 
-*RQ: Why do a large proportion of participants who voluntarily register for a MOOC not watch a single video (i.e., why is the initial drop-out rate so high?)*
+In the context of initial dropout, we argue that there are two factors that might lead early registrants to drop out. First, the growth spurts and attrition that characterize the run-up to start of a course make comunity formation difficult [@yang2013turn]. Second, participants who register early might have done so in a moment of enthusiasm that dissipates by the time the course eventually starts. Following these arguments, we expect that date of registration, i.e., whether the participant registered early or late (relative to the course start date) might be strongly predictive of initial dropout. Similarly, we expect participant demographics to be reflective of the infrastructure available in order to successfully engage with a MOOC. For e.g., a participant from United States is expected to have access to better internet facilities compared to a participant from Rwanda.
 
-Our initial hypothesis is that date of registration, i.e., whether the participant registered early or late (relative to the fixed course start date) might be strongly predictive of initial dropout. We argue that participants who register early might have done so in a moment of enthusiasm that dissipates by the time the course eventually starts. We incorporate this information into our models by adding a variable to indicate` whether the participant registered before or after the course launch, and how far the registration date was from the launch date. Similarly, we expect participant demographics to be reflective of the infrastructure available in order to successfully engage with a MOOC. For e.g., a participant from United States is expected to have access to better internet facilities compared to a participant from Rwanda.
+Following the descriptive measures and the arguments presented in this section, the research questions we explore are:
 
-Since we want our models to be strongly predictive of drop-out, we attach prime importance to misclassified participants. In particular, we want the number of participants who were misclassified as non drop-outs to be minimum. To enforce this we scored our models using the AUC of the ROC curve as the metric and selected the final model parameters and metrics based on 10-fold cross validation with 3 repeats. To account for the class imbalance we observe in Figure \ref{descriptive_plots}, we follow prior literature and employ the Synthetic Minority Over-sampling Technique (SMOTE) to form the training set (chosen as 80% of the entire data set). 
+*RQ1: Early registration is strongly predictive of initial drop-out*
 
-In the next section, we extend the discussion in this section by predicting initial drop-out based on the data available on the registered learners using 4 methods - Logistic Regression, Random Forests, Gradient Boosting and Neural Networks. 
+*RQ2: The country of residence of a participant is strongly predictive of initial drop-out*
 
-## Modeling initial dropout
+# Modeling initial dropout
 
-In all the models we executed, the engagement status was used as the outcome (coded 1 for ‘engaged’ and 0 for ‘not engaged) while age, gender, country and date of registration were used as predictors. Before we ran the models on initial dropout, we excluded the participants who registered for more than one course because while it is plausible that participant behavior in a course is dependent on the course rather than the user, there is no information we could use to incorporate this into the initial dropout. 
+In this section, we present predictive models for initial drop-out using 3 methods - Logistic Regression, Gradient Boosting and Neural Networks. 
 
-```{r}
+## Preprocessing
 
+Engagement status was used as the label (coded 1 for ‘engaged’ and 0 for ‘not engaged) to be predicted in all our models. The features used to predict the engagement status were extracted from age, gender, country and date of registration. Following the discussion in section 2.3, we added a new variable `joined_early_or_late` by subtracting the start date of a course from the date of registration by the participant. We expect this variable to be the key predictor in our model. The other key variables included were age, gender and country (one-hot encoded). Finally, we excluded the participants who registered for more than one course (this allows us to justify the independent samples assumption underlying the models). The final sample size on which the models were evaluated is $n = 316,917$.
+
+## Model execution
+
+Since we want our models to be strongly predictive of drop-out, we attach prime importance to misclassified participants. In particular, we want the number of participants who were misclassified as non drop-outs to be minimum. To enforce this we scored our models using the AUC of the ROC curve as the metric and selected the final model hyperparameters based on 10-fold cross validation with 3 repeats. To account for the class imbalance we observe in Figure \ref{descriptive_plots}, we follow prior literature and employ the Synthetic Minority Over-sampling Technique (SMOTE) to form the training set (chosen as 80% of the entire data set).
+
+Logistic regression was executed using L2-regularization with the regularization strength as the hyperparameter. For Gradient Boosting, we use the `xgBoost` algorithm [@chen2016xgboost], with depth of the trees and the number of estimators tuned as hyperparameters during training (we performed a random grid search over a larger parameter space to arrive at a shortlist). The neural networks were composed of a sequence of fully connected layers with the number of units per layer and the number of layers tuned during training. The final model comprised 9 fully connected layers, with 32 units in each layer (total number of trainable parameters $=4,417$).   
+
+## Results
+
+```{r fig.cap="ROC curves for the 3 model fits \\label{roc_curves}", fig.align="center", out.width="100%"}
+
+logit_roc_df <- read_feather("../data/logit-roc.feather")
+nnet_roc_df <- read_feather("../data/nnet-roc.feather")
+xgb_roc_df <- read_feather("../data/xgb-roc.feather")
+
+logit_roc_df %>% mutate(model = "Logistic Regression") -> logit_roc_df
+nnet_roc_df %>% mutate(model = "Neural Network") -> nnet_roc_df
+xgb_roc_df %>% mutate(model = "Gradient Boosting") -> xgb_roc_df
+
+all_roc_df <- bind_rows(logit_roc_df, nnet_roc_df, xgb_roc_df)
+
+ggplot(all_roc_df, aes(x = false_positive_rate, y = true_positive_rate)) +
+    geom_step(aes(color = model)) +
+    geom_abline(intercept = 0, slope = 1, linetype = 'dashed') +
+    labs(x = "False Positive Rate",
+         y = "True Positive Rate",
+         color = "Model",
+         title = "ROC curves for the three models")
 ```
 
+As can be inferred from \ref{roc_curves}, Gradient Boosting and Neural Networks perform much better than Logistic Regression. However, since the Gradient Boosting model had a higher accuracy on the test set (76.1%) we choose this as our final model. 
 
-random forest, xgboost and mlp here
+# Discussion
 
-xgb accuracy is 76.1% highest among all.
+The results presented in Section 3 indicate that the Gradient Boosted Model is a good model for the data set. In order to address the two research questions posed in Section 2, we now move to probe the relative importance of the factors in the predictive ability of the model on the data set. Relative importance of a feature is computed by averaging (across all trees) the number of times this feature is selected for the split weighted by the improvement to the resulting model [@elith2008working]. Figure \ref{feature_importance} shows the relative importance of the top 5 features that contribute most to the predictive ability of the final Gradient Boosting Model on the test set. 
 
-Insert Figure 3 here
-As can be seen from the values of Cohen’s Kappa in Figure 3, the model with just the age, education, gender and registered date is far from being predictive of initial drop-out. For two of the courses, random forests (and logit) do a great job in predicting drop-out using the features we have considered, but we did not observe similar accuracy on the test data. Overall, random forests do improve predictive power over logistic regression, but not by a large amount. 
-In sum, we conclude that key predictors of initial drop-out are missing from the data collected in the Harvard and MIT MOOCs. Given the current data set, we cannot crystallize key observable features that result in high initial drop-out. We note that there are other features in the data set relevant to learners who engaged with the data, e.g., number of chapters accessed, number of video play events that might predict eventual certification. 
+```{r fig.cap="Feature importance plot of the Gradient Boosted Model \\label{feature_importance}", fig.align="center", out.width="100%"}
+
+xgb_feature_imp_df <- read_feather('../data/xgb-feature-importance.feather')
+
+xgb_feature_imp_df %>% 
+    
+    top_n(5, feature_importance) %>% 
+    
+    arrange(desc(feature_importance)) ->
+    
+    xgb_top_five_features_df
+
+ggplot(xgb_top_five_features_df) +
+    geom_bar(aes(x = reorder(feature, feature_importance), y = feature_importance), 
+             stat = 'identity',
+             width = 0.5,
+             color = 'white',
+             fill = 'black') +
+    coord_flip() +
+    labs(x = 'Feature',
+         y = 'Feature Importance',
+         title = 'Top 5 features for the Gradient Boosted Model')
+```
+
+Figure \ref{feature_importance} indicates that the most important feature to the prediction of initial drop-out is whether the participant joined early (validating RQ1). Further, contrary to our expectation summarized in RQ2, our results indicate that education and country are not on the same scale of importance as early registration. This is suprising since we expect participants with higher education levels to be more disciplined in terms of attending and completing MOOCs (given that they have attended and completed courses within their formal education). The emergence of age as a stronger predictor is a surprising finding we wish to explore in further research. 
+
+In sum, we conclude that early registration is a key predictor of initial drop-out. This has important implications for the marketing and execution of MOOCs. In practise, we observe that little attention is paid to monitoring of participants before the course begins and our results indicate that neglecting this phase has a devastating effect on the drop-out rate. Our results indicate that early registrants need to be watched carefully and nudged to begin the course. We submit that this is paramount for government initiatives, and we strongly advocate the allocation of resources and attention to participants who have registered early.
+
+Since this study is one of the first to probe initial drop-out, it is limited by the analysis of the secondary data. However, by using powerful machine learning methods, we are able to crystallize key features decicion makers should be aware of while launching MOOCs. In the next phase of research, we wish to undertake primary research to understand the decision-making process of MOOC drop-outs and incorporate the findings from this research into better predictive models of initial dropout. 
 
 \newpage 
 
