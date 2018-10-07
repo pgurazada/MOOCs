@@ -1,0 +1,38 @@
+\begin{figure}[p]
+
+{\centering \includegraphics[width=1\linewidth]{initial-draft_files/figure-latex/unnamed-chunk-5-1}
+
+}
+
+\caption{Descriptive statistics \label{descriptive_plots}}\label{fig:unnamed-chunk-5}
+\end{figure}
+\efloatseparator
+ 
+\begin{figure}[p]
+
+{\centering \includegraphics[width=1\linewidth,height=1\textheight]{initial-draft_files/figure-latex/unnamed-chunk-6-1}
+
+}
+
+\caption{Activity Status \label{activity_status}}\label{fig:unnamed-chunk-6}
+\end{figure}
+\efloatseparator
+ 
+\begin{figure}[p]
+
+{\centering \includegraphics[width=1\linewidth]{initial-draft_files/figure-latex/unnamed-chunk-7-1}
+
+}
+
+\caption{ROC curves for the 3 model fits \label{roc_curves}}\label{fig:unnamed-chunk-7}
+\end{figure}
+\efloatseparator
+ 
+\begin{figure}[p]
+
+{\centering \includegraphics[width=1\linewidth]{initial-draft_files/figure-latex/unnamed-chunk-8-1}
+
+}
+
+\caption{Feature importance plot of the Gradient Boosted Model \label{feature_importance}}\label{fig:unnamed-chunk-8}
+\end{figure}
